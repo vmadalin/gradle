@@ -42,6 +42,10 @@ public class CachingJvmMetadataDetector implements JvmMetadataDetector, Conditio
         return javaMetadata.computeIfAbsent(javaHome, file -> delegate.getMetadata(javaInstallationLocation));
     }
 
+    public Map<File, JvmInstallationMetadata> getJavaMetadata() {
+        return javaMetadata;
+    }
+
     private File resolveSymlink(File jdkPath) {
         try {
             return jdkPath.getCanonicalFile();

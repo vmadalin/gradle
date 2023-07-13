@@ -23,6 +23,7 @@ import org.gradle.internal.buildoption.BuildOption;
 import org.gradle.internal.buildoption.BuildOptionSet;
 import org.gradle.internal.buildoption.CommandLineOptionConfiguration;
 import org.gradle.internal.buildoption.EnabledOnlyBooleanBuildOption;
+import org.gradle.internal.buildoption.IntegerBuildOption;
 import org.gradle.internal.buildoption.Origin;
 import org.gradle.internal.buildoption.StringBuildOption;
 import org.gradle.internal.jvm.JavaHomeException;
@@ -41,6 +42,7 @@ public class DaemonBuildOptions extends BuildOptionSet<DaemonParameters> {
         new HealthCheckOption(),
         new BaseDirOption(),
         new JvmArgsOption(),
+        new JvmVersionOption(),
         new JavaHomeOption(),
         new DebugOption(),
         new DebugHostOption(),
@@ -132,7 +134,7 @@ public class DaemonBuildOptions extends BuildOptionSet<DaemonParameters> {
 
         @Override
         public void applyTo(String value, DaemonParameters settings, Origin origin) {
-            File javaHome = new File(value);
+            File javaHome = new File("/Users/vmadalin/Develop/studio-main/prebuilts/studio/jdk/jdk17/mac/Contents/Home");
             if (!javaHome.isDirectory()) {
                 origin.handleInvalidValue(value, "Java home supplied is invalid");
             }
@@ -143,6 +145,24 @@ public class DaemonBuildOptions extends BuildOptionSet<DaemonParameters> {
             } catch (JavaHomeException e) {
                 origin.handleInvalidValue(value, "Java home supplied seems to be invalid");
             }
+        }
+    }
+
+    public static class JvmVersionOption extends IntegerBuildOption<DaemonParameters> {
+        public static final String GRADLE_PROPERTY = "org.gradle.experimental.daemon.jvm.version";
+
+        public JvmVersionOption() {
+            super(GRADLE_PROPERTY);
+        }
+
+        @Override
+        public void applyTo(int value, DaemonParameters settings, Origin origin) {
+            int minAllowed = Integer.parseInt(DaemonParameters.MIN_SUPPORTED_JVM_VERSION.getMajorVersion());
+
+            if (value < minAllowed) {
+                origin.handleInvalidValue(Integer.toString(value), "Daemon JVM version must be at least " + minAllowed);
+            }
+            settings.setJvmVersion(value);
         }
     }
 

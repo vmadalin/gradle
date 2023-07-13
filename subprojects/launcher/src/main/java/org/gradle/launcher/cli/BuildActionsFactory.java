@@ -17,10 +17,14 @@
 package org.gradle.launcher.cli;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Stopwatch;
+import net.rubygrapefruit.platform.WindowsRegistry;
 import org.gradle.StartParameter;
 import org.gradle.api.Action;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.internal.StartParameterInternal;
 import org.gradle.api.internal.file.FileCollectionFactory;
+import org.gradle.api.internal.file.temp.TemporaryFileProvider;
 import org.gradle.cli.CommandLineParser;
 import org.gradle.cli.ParsedCommandLine;
 import org.gradle.configuration.GradleLauncherMetaData;
@@ -33,12 +37,13 @@ import org.gradle.internal.agents.AgentStatus;
 import org.gradle.internal.classpath.ClassPath;
 import org.gradle.internal.concurrent.CompositeStoppable;
 import org.gradle.internal.concurrent.Stoppable;
+import org.gradle.internal.jvm.Jvm;
+import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.logging.events.OutputEventListener;
 import org.gradle.internal.nativeintegration.services.NativeServices;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.service.ServiceRegistryBuilder;
-import org.gradle.internal.service.scopes.BasicGlobalScopeServices;
 import org.gradle.internal.service.scopes.GlobalScopeServices;
 import org.gradle.internal.service.scopes.GradleUserHomeScopeServiceRegistry;
 import org.gradle.launcher.bootstrap.ExecutionListener;
@@ -55,9 +60,11 @@ import org.gradle.launcher.exec.BuildActionExecuter;
 import org.gradle.launcher.exec.BuildActionParameters;
 import org.gradle.launcher.exec.BuildExecuter;
 import org.gradle.launcher.exec.DefaultBuildActionParameters;
+import org.gradle.process.internal.ExecFactory;
 
 import java.lang.management.ManagementFactory;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 class BuildActionsFactory implements CommandLineActionCreator {
     private final ParametersConverter parametersConverter;
@@ -65,16 +72,25 @@ class BuildActionsFactory implements CommandLineActionCreator {
     private final JvmVersionDetector jvmVersionDetector;
     private final FileCollectionFactory fileCollectionFactory;
     private final ServiceRegistry basicServices;
+    private final DaemonJvmSelector daemonJvmSelector;
 
     public BuildActionsFactory(ServiceRegistry loggingServices) {
+
         basicServices = ServiceRegistryBuilder.builder()
             .parent(loggingServices)
             .parent(NativeServices.getInstance())
-            .provider(new BasicGlobalScopeServices()).build();
+            .provider(new GlobalScopeServices(true, AgentStatus.of(true))).build();
+
         this.loggingServices = loggingServices;
-        fileCollectionFactory = basicServices.get(FileCollectionFactory.class);
-        parametersConverter = new ParametersConverter(new BuildLayoutFactory(), basicServices.get(FileCollectionFactory.class));
-        jvmVersionDetector = basicServices.get(JvmVersionDetector.class);
+        this.fileCollectionFactory = basicServices.get(FileCollectionFactory.class);
+        this.parametersConverter = new ParametersConverter(new BuildLayoutFactory(), basicServices.get(FileCollectionFactory.class));
+        this.jvmVersionDetector = basicServices.get(JvmVersionDetector.class);
+        this.daemonJvmSelector = new DaemonJvmSelector(
+            basicServices.get(ExecFactory.class),
+            basicServices.get(TemporaryFileProvider.class),
+            basicServices.get(WindowsRegistry.class),
+            basicServices
+        );
     }
 
     @Override
@@ -85,8 +101,22 @@ class BuildActionsFactory implements CommandLineActionCreator {
     @Override
     public Action<? super ExecutionListener> createAction(CommandLineParser parser, ParsedCommandLine commandLine) {
         Parameters parameters = parametersConverter.convert(commandLine, null);
-
-        parameters.getDaemonParameters().applyDefaultsFor(jvmVersionDetector.getJavaVersion(parameters.getDaemonParameters().getEffectiveJvm()));
+        JavaVersion version;
+        // Only auto-detect JVM a javaHome was not explicitly set.
+        if (parameters.getDaemonParameters().getJvm() == null &&
+            parameters.getDaemonParameters().getJvmVersion() != null
+        ) {
+            Integer requestedVersion = parameters.getDaemonParameters().getJvmVersion();
+            Stopwatch stopwatch = Stopwatch.createStarted();
+            JvmInstallationMetadata installation = daemonJvmSelector.getDaemonJvmInstallation(requestedVersion, parameters);
+            stopwatch.stop(); // optional
+            System.out.println("Time elapsed: "+ stopwatch.elapsed(TimeUnit.MILLISECONDS));
+            parameters.getDaemonParameters().setJvm(Jvm.forHome(installation.getJavaHome().toFile()));
+            version = installation.getLanguageVersion();
+        } else {
+            version = jvmVersionDetector.getJavaVersion(parameters.getDaemonParameters().getEffectiveJvm());
+        }
+        parameters.getDaemonParameters().applyDefaultsFor(version);
 
         if (parameters.getDaemonParameters().isStop()) {
             return Actions.toAction(stopAllDaemons(parameters.getDaemonParameters()));

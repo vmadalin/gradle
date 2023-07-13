@@ -65,9 +65,9 @@ public class BuildResultLogger {
         textOutput.println();
         String action = result.getAction().toUpperCase();
         if (buildSucceeded) {
-            textOutput.withStyle(SuccessHeader).text(action + " SUCCESSFUL");
+            textOutput.withStyle(SuccessHeader).text(action + " SUCCESSFULLL4");
         } else {
-            textOutput.withStyle(FailureHeader).text(action + " FAILED");
+            textOutput.withStyle(FailureHeader).text(action + " FAILEDDDD4");
         }
 
         long buildDurationMillis = clock.getCurrentTime() - buildStartedTime.getStartTime();

@@ -18,16 +18,17 @@ package org.gradle.internal.jvm.inspection;
 
 import org.gradle.api.JavaVersion;
 import org.gradle.internal.os.OperatingSystem;
-import org.gradle.internal.serialization.Cached;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.Serializable;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.HashSet;
 import java.util.Set;
 
-public interface JvmInstallationMetadata {
+// TODO probably we should avoid making this serializable and instead add something different
+public interface JvmInstallationMetadata extends Serializable {
 
     enum JavaInstallationCapability {
         JAVA_COMPILER, J9_VIRTUAL_MACHINE
@@ -116,7 +117,7 @@ public interface JvmInstallationMetadata {
 
     class DefaultJvmInstallationMetadata implements JvmInstallationMetadata {
 
-        private final Path javaHome;
+        private final String javaHome;
         private final JavaVersion languageVersion;
         private final String javaVersion;
         private final String javaVendor;
@@ -127,7 +128,7 @@ public interface JvmInstallationMetadata {
         private final String jvmVendor;
         private final String architecture;
 
-        private final Cached<Set<JavaInstallationCapability>> capabilities = Cached.of(this::gatherCapabilities);
+//        private final Cached<Set<JavaInstallationCapability>> capabilities = Cached.of(this::gatherCapabilities);
 
         private DefaultJvmInstallationMetadata(
             File javaHome,
@@ -140,7 +141,7 @@ public interface JvmInstallationMetadata {
             String jvmVendor,
             String architecture
         ) {
-            this.javaHome = javaHome.toPath();
+            this.javaHome = javaHome.toString();
             this.languageVersion = JavaVersion.toVersion(javaVersion);
             this.javaVersion = javaVersion;
             this.javaVendor = javaVendor;
@@ -154,7 +155,7 @@ public interface JvmInstallationMetadata {
 
         @Override
         public Path getJavaHome() {
-            return javaHome;
+            return new File(javaHome).toPath();
         }
 
         @Override
@@ -231,12 +232,12 @@ public interface JvmInstallationMetadata {
 
         @Override
         public boolean hasCapability(JavaInstallationCapability capability) {
-            return capabilities.get().contains(capability);
+           return false; // return capabilities.get().contains(capability);
         }
 
         private Set<JavaInstallationCapability> gatherCapabilities() {
             final Set<JavaInstallationCapability> capabilities = new HashSet<>(2);
-            final File javaCompiler = new File(new File(javaHome.toFile(), "bin"), OperatingSystem.current().getExecutableName("javac"));
+            final File javaCompiler = new File(new File(new File(javaHome), "bin"), OperatingSystem.current().getExecutableName("javac"));
             if (javaCompiler.exists()) {
                 capabilities.add(JavaInstallationCapability.JAVA_COMPILER);
             }

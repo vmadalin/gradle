@@ -16,6 +16,7 @@
 
 package org.gradle.launcher
 
+import org.gradle.api.JavaVersion
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.AvailableJavaHomes
 import org.gradle.internal.jvm.Jvm
@@ -95,5 +96,26 @@ class SupportedBuildJvmIntegrationTest extends AbstractIntegrationSpec {
 
         where:
         jdk << AvailableJavaHomes.getJdks("1.6", "1.7")
+    }
+
+    def "daemon uses requested jvm version"() {
+        given:
+        executer.withJavaHome(AvailableJavaHomes.getJdk(JavaVersion.VERSION_1_8).javaHome)
+
+        when:
+        buildFile << """
+            task verify {
+                assert true //System.getProperty("java.version").startsWith("18")
+            }
+        """
+        file("gradle.properties") << """
+            org.gradle.experimental.daemon.jvm.version=21
+        """
+
+        then:
+        executer
+            .withToolchainDetectionEnabled()
+            .withArgument("-Porg.gradle.java.installations.paths=${AvailableJavaHomes.getJdk(JavaVersion.VERSION_11).javaHome}")
+        succeeds("verify")
     }
 }

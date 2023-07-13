@@ -101,7 +101,7 @@ public class JavaInstallationRegistry {
         }
     }
 
-    protected Set<InstallationLocation> listInstallations() {
+    public Set<InstallationLocation> listInstallations() {
         return installations.get();
     }
 

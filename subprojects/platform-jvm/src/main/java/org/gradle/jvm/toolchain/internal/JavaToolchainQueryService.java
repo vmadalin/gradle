@@ -172,7 +172,7 @@ public class JavaToolchainQueryService {
         }
     }
 
-    private JavaToolchain downloadToolchain(JavaToolchainSpec spec) {
+    public JavaToolchain downloadToolchain(JavaToolchainSpec spec) {
         File installation;
         try {
             installation = installService.tryInstall(spec);
