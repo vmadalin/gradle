@@ -433,10 +433,10 @@ public class NativeServices extends DefaultServiceRegistry implements ServiceReg
         return builder.toString();
     }
 
-    private static class BrokenService implements InvocationHandler {
+    public static class BrokenService implements InvocationHandler {
         private final String type;
 
-        private BrokenService(String type) {
+        public BrokenService(String type) {
             this.type = type;
         }
 

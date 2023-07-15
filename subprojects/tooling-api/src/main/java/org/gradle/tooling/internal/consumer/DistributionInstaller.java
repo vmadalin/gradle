@@ -78,6 +78,7 @@ public class DistributionInstaller {
      * Installs the distribution and returns the result.
      */
     public File install(File userHomeDir, File projectDir, WrapperConfiguration wrapperConfiguration, Map<String, String> systemProperties) throws Exception {
+        System.out.println("HERE DISTRIBUTION6");
         Install install = new Install(new Logger(false), new AsyncDownload(systemProperties), new PathAssembler(userHomeDir, projectDir));
         return install.createDist(wrapperConfiguration);
     }

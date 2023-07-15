@@ -166,6 +166,9 @@ public class DaemonJvmSelector {
             // TODO download JDK
             // TODO duplicate logic
             System.out.println("DOWNLOADING JDK...");
+            if (true) {
+                throw new GradleException("Unable to detect JVM installation compatible with Java " + version + ". Download it using the bellow link");
+            }
             List<InstallationSupplier> installationSuppliers = getInstallationSuppliers(
                 new BasicProviderFactory(parameters), execHandleFactory, windowsRegistry);
             JavaInstallationRegistry registry = new JavaInstallationRegistry(installationSuppliers, detector, null, OperatingSystem.current(), new NoOpProgressLoggerFactory());

@@ -44,7 +44,7 @@ public class DaemonJvmInstallationMetadataCache {
     private final PersistentCache persistentCache;
     private final IndexedCache<JavaVersion, JvmInstallationMetadata> indexedCache;
 
-    DaemonJvmInstallationMetadataCache(CacheFactory cacheFactory, GradleUserHomeDirProvider gradleUserHomeDirProvider) {
+    public DaemonJvmInstallationMetadataCache(CacheFactory cacheFactory, GradleUserHomeDirProvider gradleUserHomeDirProvider) {
         File rootDir = new File(gradleUserHomeDirProvider.getGradleUserHomeDirectory(), "jdks");
         DefaultCacheScopeMapping cacheScopeMapping = new DefaultCacheScopeMapping(rootDir, GradleVersion.current());
         File cacheBaseDir = cacheScopeMapping.getBaseDirectory(null, "daemonJvm", VersionStrategy.SharedCache);

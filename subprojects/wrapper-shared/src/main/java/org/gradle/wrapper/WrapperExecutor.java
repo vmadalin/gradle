@@ -99,6 +99,7 @@ public class WrapperExecutor {
     }
 
     public void execute(String[] args, Install install, BootstrapMainStarter bootstrapMainStarter) throws Exception {
+        System.out.println("HERE WRAPPER");
         File gradleHome = install.createDist(config);
         bootstrapMainStarter.start(args, gradleHome);
     }

@@ -134,7 +134,7 @@ public class DaemonBuildOptions extends BuildOptionSet<DaemonParameters> {
 
         @Override
         public void applyTo(String value, DaemonParameters settings, Origin origin) {
-            File javaHome = new File("/Users/vmadalin/Develop/studio-main/prebuilts/studio/jdk/jdk17/mac/Contents/Home");
+            File javaHome = new File(value);
             if (!javaHome.isDirectory()) {
                 origin.handleInvalidValue(value, "Java home supplied is invalid");
             }

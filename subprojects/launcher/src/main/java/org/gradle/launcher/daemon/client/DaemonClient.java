@@ -33,6 +33,7 @@ import org.gradle.internal.logging.ConsoleRenderer;
 import org.gradle.internal.logging.events.OutputEventListener;
 import org.gradle.internal.nativeintegration.ProcessEnvironment;
 import org.gradle.internal.remote.internal.Connection;
+import org.gradle.internal.service.DefaultServiceRegistry;
 import org.gradle.launcher.daemon.context.DaemonContext;
 import org.gradle.launcher.daemon.diagnostics.DaemonDiagnostics;
 import org.gradle.launcher.daemon.protocol.Build;
@@ -108,7 +109,7 @@ public class DaemonClient implements BuildActionExecuter<BuildActionParameters, 
     //TODO - outputEventListener and buildStandardInput are per-build settings
     //so down the road we should refactor the code accordingly and potentially attach them to BuildActionParameters
     public DaemonClient(DaemonConnector connector, OutputEventListener outputEventListener, ExplainingSpec<DaemonContext> compatibilitySpec,
-                        InputStream buildStandardInput, ExecutorFactory executorFactory, IdGenerator<UUID> idGenerator, ProcessEnvironment processEnvironment) {
+        InputStream buildStandardInput, ExecutorFactory executorFactory, IdGenerator<UUID> idGenerator, ProcessEnvironment processEnvironment) {
         this.connector = connector;
         this.outputEventListener = outputEventListener;
         this.compatibilitySpec = compatibilitySpec;

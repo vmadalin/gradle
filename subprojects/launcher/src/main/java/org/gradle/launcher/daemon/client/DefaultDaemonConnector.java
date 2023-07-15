@@ -16,22 +16,34 @@
 package org.gradle.launcher.daemon.client;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
+import net.rubygrapefruit.platform.WindowsRegistry;
+import org.gradle.api.internal.StartParameterInternal;
+import org.gradle.api.internal.file.temp.TemporaryFileProvider;
 import org.gradle.api.internal.specs.ExplainingSpec;
 import org.gradle.api.internal.specs.ExplainingSpecs;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.specs.Spec;
+import org.gradle.internal.Cast;
 import org.gradle.internal.Pair;
 import org.gradle.internal.UncheckedException;
+import org.gradle.internal.jvm.Jvm;
+import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
 import org.gradle.internal.logging.progress.ProgressLogger;
 import org.gradle.internal.logging.progress.ProgressLoggerFactory;
+import org.gradle.internal.nativeintegration.services.NativeServices;
 import org.gradle.internal.remote.internal.ConnectException;
 import org.gradle.internal.remote.internal.OutgoingConnector;
 import org.gradle.internal.remote.internal.RemoteConnection;
 import org.gradle.internal.serialize.Serializer;
 import org.gradle.internal.serialize.Serializers;
+import org.gradle.internal.service.DefaultServiceRegistry;
 import org.gradle.internal.time.CountdownTimer;
 import org.gradle.internal.time.Time;
+import org.gradle.launcher.cli.DaemonJvmSelector;
+import org.gradle.launcher.cli.Parameters;
+import org.gradle.launcher.daemon.configuration.DaemonParameters;
 import org.gradle.launcher.daemon.context.DaemonConnectDetails;
 import org.gradle.launcher.daemon.context.DaemonContext;
 import org.gradle.launcher.daemon.diagnostics.DaemonStartupInfo;
@@ -42,12 +54,15 @@ import org.gradle.launcher.daemon.registry.DaemonRegistry;
 import org.gradle.launcher.daemon.registry.DaemonStopEvent;
 import org.gradle.launcher.daemon.registry.DaemonStopEvents;
 import org.gradle.launcher.daemon.server.api.DaemonStateControl;
+import org.gradle.process.internal.ExecFactory;
 import org.gradle.util.internal.CollectionUtils;
 
+import java.lang.reflect.Proxy;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static java.lang.Thread.sleep;
 import static org.gradle.launcher.daemon.server.api.DaemonStateControl.State.Canceled;
@@ -67,8 +82,9 @@ public class DefaultDaemonConnector implements DaemonConnector {
     private final ProgressLoggerFactory progressLoggerFactory;
     private final Serializer<Message> serializer;
     private long connectTimeout = DefaultDaemonConnector.DEFAULT_CONNECT_TIMEOUT;
+    private final DefaultServiceRegistry registry;
 
-    public DefaultDaemonConnector(DaemonRegistry daemonRegistry, OutgoingConnector connector, DaemonStarter daemonStarter, DaemonStartListener startListener, ProgressLoggerFactory progressLoggerFactory, Serializer<Message> serializer) {
+    public DefaultDaemonConnector(DefaultServiceRegistry registry,  DaemonRegistry daemonRegistry, OutgoingConnector connector, DaemonStarter daemonStarter, DaemonStartListener startListener, ProgressLoggerFactory progressLoggerFactory, Serializer<Message> serializer) {
         this.serializer = serializer;
         Preconditions.checkNotNull(daemonRegistry);
         Preconditions.checkNotNull(connector);
@@ -76,6 +92,7 @@ public class DefaultDaemonConnector implements DaemonConnector {
         Preconditions.checkNotNull(startListener);
         Preconditions.checkNotNull(progressLoggerFactory);
 
+        this.registry = registry;
         this.daemonRegistry = daemonRegistry;
         this.connector = connector;
         this.daemonStarter = daemonStarter;
@@ -216,7 +233,37 @@ public class DefaultDaemonConnector implements DaemonConnector {
         return doStartDaemon(constraint, false);
     }
 
+    private <T> T notAvailable(Class<T> type) {
+        return Cast.uncheckedNonnullCast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, new NativeServices.BrokenService(type.getSimpleName())));
+    }
+
     private DaemonClientConnection doStartDaemon(ExplainingSpec<DaemonContext> constraint, boolean singleRun) {
+        System.out.println("HERE100");
+        System.out.println("HERE11");
+        System.out.println(((DefaultDaemonStarter) daemonStarter).getDaemonParameters().getEffectiveJvmArgs());
+        System.out.println(((DefaultDaemonStarter) daemonStarter).getDaemonParameters().getEffectiveJvm().getJavaExecutable().getAbsolutePath());
+
+        DaemonJvmSelector daemonJvmSelector = new DaemonJvmSelector(
+            registry.get(ExecFactory.class),
+            registry.get(TemporaryFileProvider.class),
+            notAvailable(WindowsRegistry.class), // registry.get(WindowsRegistry.class),
+            registry
+        );
+
+        DaemonParameters daemonParameters = ((DefaultDaemonStarter) daemonStarter).getDaemonParameters();
+        // Only auto-detect JVM a javaHome was not explicitly set.
+        if (daemonParameters.getJvm() == null &&
+            daemonParameters.getJvmVersion() != null
+        ) {
+            Integer requestedVersion = daemonParameters.getJvmVersion();
+            Stopwatch stopwatch = Stopwatch.createStarted();
+            Parameters parameters = new Parameters(daemonParameters.getLayoutResult(), new StartParameterInternal(), daemonParameters);
+            JvmInstallationMetadata installation = daemonJvmSelector.getDaemonJvmInstallation(requestedVersion, parameters);
+            stopwatch.stop(); // optional
+            System.out.println("Time elapsed: "+ stopwatch.elapsed(TimeUnit.MILLISECONDS));
+            daemonParameters.setJvm(Jvm.forHome(installation.getJavaHome().toFile()));
+        }
+        System.out.println("HERE");
         ProgressLogger progressLogger = progressLoggerFactory.newOperation(DefaultDaemonConnector.class)
             .start("Starting Gradle Daemon", "Starting Daemon");
         final DaemonStartupInfo startupInfo = daemonStarter.startDaemon(singleRun);
@@ -252,11 +299,11 @@ public class DefaultDaemonConnector implements DaemonConnector {
         for (DaemonInfo daemonInfo : daemonRegistry.getNotIdle()) {
             if (daemonInfo.getUid().equals(daemon.getUid())) {
                 try {
-                    if (!constraint.isSatisfiedBy(daemonInfo.getContext())) {
-                        throw new DaemonConnectionException("The newly created daemon process has a different context than expected."
-                            + "\nIt won't be possible to reconnect to this daemon. Context mismatch: "
-                            + "\n" + constraint.whyUnsatisfied(daemonInfo.getContext()));
-                    }
+//                    if (!constraint.isSatisfiedBy(daemonInfo.getContext())) {
+//                        throw new DaemonConnectionException("The newly created daemon process has a different context than expected."
+//                            + "\nIt won't be possible to reconnect to this daemon. Context mismatch: "
+//                            + "\n" + constraint.whyUnsatisfied(daemonInfo.getContext()));
+//                    }
                     return connectToDaemon(daemonInfo, new CleanupOnStaleAddress(daemonInfo, false));
                 } catch (ConnectException e) {
                     throw new DaemonConnectionException("Could not connect to the Gradle daemon.\n" + daemon.describe(), e);

@@ -63,6 +63,10 @@ public class DefaultDaemonStarter implements DaemonStarter {
     private final DaemonGreeter daemonGreeter;
     private final JvmVersionValidator versionValidator;
 
+    public DaemonParameters getDaemonParameters() {
+        return daemonParameters;
+    }
+
     public DefaultDaemonStarter(DaemonDir daemonDir, DaemonParameters daemonParameters, DaemonGreeter daemonGreeter, JvmVersionValidator versionValidator) {
         this.daemonDir = daemonDir;
         this.daemonParameters = daemonParameters;
@@ -97,8 +101,12 @@ public class DefaultDaemonStarter implements DaemonStarter {
         List<String> daemonArgs = new ArrayList<>();
         daemonArgs.addAll(getPriorityArgs(daemonParameters.getPriority()));
         daemonArgs.add(daemonParameters.getEffectiveJvm().getJavaExecutable().getAbsolutePath());
-
+        System.out.println("HERE31");
+        System.out.println(daemonParameters.getJvm());
+        System.out.println(daemonParameters.getEffectiveJvm().getJavaExecutable().getAbsolutePath());
         List<String> daemonOpts = daemonParameters.getEffectiveJvmArgs();
+        System.out.println("HERE40");
+        System.out.println(daemonOpts);
         daemonArgs.addAll(daemonOpts);
         daemonArgs.add("-cp");
         daemonArgs.add(CollectionUtils.join(File.pathSeparator, classpath.getAsFiles()));
@@ -118,7 +126,8 @@ public class DefaultDaemonStarter implements DaemonStarter {
         }
 
         LOGGER.debug("Using daemon args: {}", daemonArgs);
-
+        System.out.println("HERE40");
+        System.out.println(daemonArgs);
         daemonArgs.add(GradleDaemon.class.getName());
         // Version isn't used, except by a human looking at the output of jps.
         daemonArgs.add(GradleVersion.current().getVersion());

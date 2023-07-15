@@ -319,6 +319,7 @@ public class ProviderConnection {
         if (javaHome != null) {
             daemonParams.setJvm(Jvm.forHome(javaHome));
         }
+        // TODO consider taking the version directly from daemonParams if present
         daemonParams.applyDefaultsFor(jvmVersionDetector.getJavaVersion(daemonParams.getEffectiveJvm()));
 
         if (operationParameters.getDaemonMaxIdleTimeValue() != null && operationParameters.getDaemonMaxIdleTimeUnits() != null) {

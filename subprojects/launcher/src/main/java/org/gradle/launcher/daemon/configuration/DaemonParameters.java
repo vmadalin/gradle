@@ -60,6 +60,11 @@ public class DaemonParameters {
     private Priority priority = Priority.NORMAL;
     private JavaInfo jvm;
     private Integer jvmVersion;
+    private BuildLayoutResult layoutResult;
+
+    public BuildLayoutResult getLayoutResult() {
+        return layoutResult;
+    }
 
     public DaemonParameters(BuildLayoutResult layout, FileCollectionFactory fileCollectionFactory) {
         this(layout, fileCollectionFactory, Collections.<String, String>emptyMap());
@@ -73,6 +78,7 @@ public class DaemonParameters {
             List<String> immutableAfter = jvmOptions.getAllImmutableJvmArgs();
             userDefinedImmutableJvmArgs = !immutableBefore.equals(immutableAfter);
         }
+        layoutResult = layout;
         baseDir = new File(layout.getGradleUserHomeDir(), "daemon");
         gradleUserHomeDir = layout.getGradleUserHomeDir();
         envVariables = new HashMap<>(System.getenv());
