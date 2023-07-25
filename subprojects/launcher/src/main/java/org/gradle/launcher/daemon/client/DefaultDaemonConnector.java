@@ -299,11 +299,11 @@ public class DefaultDaemonConnector implements DaemonConnector {
         for (DaemonInfo daemonInfo : daemonRegistry.getNotIdle()) {
             if (daemonInfo.getUid().equals(daemon.getUid())) {
                 try {
-//                    if (!constraint.isSatisfiedBy(daemonInfo.getContext())) {
-//                        throw new DaemonConnectionException("The newly created daemon process has a different context than expected."
-//                            + "\nIt won't be possible to reconnect to this daemon. Context mismatch: "
-//                            + "\n" + constraint.whyUnsatisfied(daemonInfo.getContext()));
-//                    }
+                    if (!constraint.isSatisfiedBy(daemonInfo.getContext())) {
+                        throw new DaemonConnectionException("The newly created daemon process has a different context than expected."
+                            + "\nIt won't be possible to reconnect to this daemon. Context mismatch: "
+                            + "\n" + constraint.whyUnsatisfied(daemonInfo.getContext()));
+                    }
                     return connectToDaemon(daemonInfo, new CleanupOnStaleAddress(daemonInfo, false));
                 } catch (ConnectException e) {
                     throw new DaemonConnectionException("Could not connect to the Gradle daemon.\n" + daemon.describe(), e);
