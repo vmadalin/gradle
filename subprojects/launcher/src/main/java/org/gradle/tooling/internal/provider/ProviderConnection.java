@@ -17,9 +17,12 @@
 package org.gradle.tooling.internal.provider;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
+import net.rubygrapefruit.platform.WindowsRegistry;
 import org.gradle.api.internal.StartParameterInternal;
 import org.gradle.api.internal.file.FileCollectionFactory;
+import org.gradle.api.internal.file.temp.TemporaryFileProvider;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.cli.CommandLineParser;
 import org.gradle.cli.ParsedCommandLine;
@@ -30,14 +33,19 @@ import org.gradle.initialization.DefaultBuildRequestContext;
 import org.gradle.initialization.DefaultBuildRequestMetaData;
 import org.gradle.initialization.NoOpBuildEventConsumer;
 import org.gradle.initialization.layout.BuildLayoutFactory;
+import org.gradle.internal.Cast;
 import org.gradle.internal.build.event.BuildEventSubscriptions;
 import org.gradle.internal.invocation.BuildAction;
 import org.gradle.internal.jvm.Jvm;
+import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.logging.LoggingManagerInternal;
 import org.gradle.internal.logging.events.OutputEventListener;
 import org.gradle.internal.logging.services.LoggingServiceRegistry;
+import org.gradle.internal.nativeintegration.services.NativeServices;
 import org.gradle.internal.service.ServiceRegistry;
+import org.gradle.launcher.cli.DaemonJvmSelector;
+import org.gradle.launcher.cli.Parameters;
 import org.gradle.launcher.cli.converter.BuildLayoutConverter;
 import org.gradle.launcher.cli.converter.InitialPropertiesConverter;
 import org.gradle.launcher.cli.converter.LayoutToPropertiesConverter;
@@ -46,12 +54,14 @@ import org.gradle.launcher.configuration.BuildLayoutResult;
 import org.gradle.launcher.configuration.InitialProperties;
 import org.gradle.launcher.daemon.client.DaemonClient;
 import org.gradle.launcher.daemon.client.DaemonClientFactory;
+import org.gradle.launcher.daemon.client.DefaultDaemonStarter;
 import org.gradle.launcher.daemon.client.NotifyDaemonAboutChangedPathsClient;
 import org.gradle.launcher.daemon.configuration.DaemonBuildOptions;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
 import org.gradle.launcher.exec.BuildActionExecuter;
 import org.gradle.launcher.exec.BuildActionParameters;
 import org.gradle.launcher.exec.BuildActionResult;
+import org.gradle.process.internal.ExecFactory;
 import org.gradle.process.internal.streams.SafeStreams;
 import org.gradle.tooling.events.OperationType;
 import org.gradle.tooling.internal.build.DefaultBuildEnvironment;
@@ -85,12 +95,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.InputStream;
+import java.lang.reflect.Proxy;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static java.util.Collections.emptySet;
 
@@ -253,10 +265,37 @@ public class ProviderConnection {
         throw new BuildExceptionVersion1(exception);
     }
 
+    private <T> T notAvailable(Class<T> type) {
+        return Cast.uncheckedNonnullCast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, new NativeServices.BrokenService(type.getSimpleName())));
+    }
+
     private BuildActionExecuter<ConnectionOperationParameters, BuildRequestContext> createExecuter(ProviderOperationParameters operationParameters, Parameters params) {
         LoggingManagerInternal loggingManager;
         BuildActionExecuter<BuildActionParameters, BuildRequestContext> executer;
         InputStream standardInput = operationParameters.getStandardInput();
+
+        DaemonJvmSelector daemonJvmSelector = new DaemonJvmSelector(
+            sharedServices.get(ExecFactory.class),
+            sharedServices.get(TemporaryFileProvider.class),
+            notAvailable(WindowsRegistry.class),
+            sharedServices
+        );
+
+        DaemonParameters daemonParameters = params.daemonParams;
+        // Only auto-detect JVM a javaHome was not explicitly set.
+        if (daemonParameters.getJvm() == null &&
+            daemonParameters.getJvmVersion() != null
+        ) {
+            Integer requestedVersion = daemonParameters.getJvmVersion();
+            Stopwatch stopwatch = Stopwatch.createStarted();
+            org.gradle.launcher.cli.Parameters parameters = new org.gradle.launcher.cli.Parameters(daemonParameters.getLayoutResult(), new StartParameterInternal(), daemonParameters);
+            JvmInstallationMetadata installation = daemonJvmSelector.getDaemonJvmInstallation(requestedVersion, parameters);
+            stopwatch.stop(); // optional
+            System.out.println("Time elapsed: "+ stopwatch.elapsed(TimeUnit.MILLISECONDS));
+            daemonParameters.setJvm(Jvm.forHome(installation.getJavaHome().toFile()));
+        }
+
+
         if (standardInput == null) {
             standardInput = SafeStreams.emptyInput();
         }
@@ -267,7 +306,7 @@ public class ProviderConnection {
         } else {
             LoggingServiceRegistry loggingServices = LoggingServiceRegistry.newNestedLogging();
             loggingManager = loggingServices.getFactory(LoggingManagerInternal.class).create();
-            ServiceRegistry clientServices = daemonClientFactory.createBuildClientServices(loggingServices.get(OutputEventListener.class), params.daemonParams, standardInput);
+            ServiceRegistry clientServices = daemonClientFactory.createBuildClientServices(loggingServices.get(OutputEventListener.class), daemonParameters, standardInput);
             executer = clientServices.get(DaemonClient.class);
         }
         return new LoggingBridgingBuildActionExecuter(new DaemonBuildActionExecuter(executer), loggingManager);
