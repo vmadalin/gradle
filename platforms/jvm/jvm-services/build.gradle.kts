@@ -36,6 +36,7 @@ dependencies {
     api(project(":enterprise-logging"))
     api(project(":file-temp"))
     api(project(":file-collections"))
+    api(project(":persistent-cache"))
     api(project(":process-services"))
 
     api(libs.inject)
@@ -43,6 +44,7 @@ dependencies {
     api(libs.nativePlatform)
 
     implementation(project(":functional"))
+    implementation(project(":messaging"))
 
     implementation(libs.guava)
     implementation(libs.asm)

@@ -81,7 +81,6 @@ class BuildActionsFactory implements CommandLineActionCreator {
         this.basicServices = ServiceRegistryBuilder.builder()
             .scope(Scope.Global.class)
             .displayName("Basic global services")
-            .parent(loggingServices)
             .parent(NativeServices.getInstance())
             .provider(new BasicGlobalScopeServices())
             .build();
@@ -250,6 +249,7 @@ class BuildActionsFactory implements CommandLineActionCreator {
     private ServiceRegistry createGlobalClientServices(boolean usingDaemon) {
         ServiceRegistryBuilder builder = ServiceRegistryBuilder.builder()
             .displayName("Daemon client global services")
+            .parent(loggingServices)
             .parent(NativeServices.getInstance());
         if (usingDaemon) {
             builder.parent(basicServices);
