@@ -33,10 +33,15 @@ import org.gradle.api.tasks.util.PatternSet;
 import org.gradle.api.tasks.util.internal.PatternSets;
 import org.gradle.api.tasks.util.internal.PatternSpecFactory;
 import org.gradle.cache.FileLockManager;
+import org.gradle.cache.internal.CacheFactory;
+import org.gradle.cache.internal.DefaultCacheFactory;
 import org.gradle.cache.internal.DefaultFileLockManager;
 import org.gradle.cache.internal.DefaultProcessMetaDataProvider;
+import org.gradle.cache.internal.DefaultUnscopedCacheBuilderFactory;
 import org.gradle.cache.internal.locklistener.DefaultFileLockContentionHandler;
 import org.gradle.cache.internal.locklistener.FileLockContentionHandler;
+import org.gradle.cache.internal.scopes.DefaultGlobalScopedCacheBuilderFactory;
+import org.gradle.initialization.GradleUserHomeDirProvider;
 import org.gradle.internal.Factory;
 import org.gradle.internal.concurrent.DefaultExecutorFactory;
 import org.gradle.internal.concurrent.ExecutorFactory;
@@ -50,15 +55,25 @@ import org.gradle.internal.jvm.inspection.InvalidInstallationWarningReporter;
 import org.gradle.internal.jvm.inspection.JvmMetadataDetector;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.jvm.inspection.ReportingJvmMetadataDetector;
+import org.gradle.internal.logging.events.OutputEventListener;
+import org.gradle.internal.logging.progress.DefaultProgressLoggerFactory;
+import org.gradle.internal.logging.progress.ProgressLoggerFactory;
+import org.gradle.internal.logging.services.ProgressLoggingBridge;
 import org.gradle.internal.nativeintegration.ProcessEnvironment;
 import org.gradle.internal.nativeintegration.filesystem.FileSystem;
+import org.gradle.internal.operations.DefaultBuildOperationIdFactory;
 import org.gradle.internal.remote.internal.inet.InetAddressFactory;
 import org.gradle.internal.remote.services.MessagingServices;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.scopes.Scope.Global;
+import org.gradle.internal.time.Clock;
 import org.gradle.process.internal.DefaultExecActionFactory;
 import org.gradle.process.internal.ExecFactory;
 import org.gradle.process.internal.ExecHandleFactory;
+
+import java.io.File;
+
+import static org.gradle.cache.internal.scopes.DefaultCacheScopeMapping.GLOBAL_CACHE_DIR_NAME;
 
 /**
  * Defines the basic global services of a given process. This includes the Gradle CLI, daemon and tooling API provider. These services
@@ -93,12 +108,17 @@ public class BasicGlobalScopeServices {
         return new DocumentationRegistry();
     }
 
-    JvmMetadataDetector createJvmMetadataDetector(ExecHandleFactory execHandleFactory, TemporaryFileProvider temporaryFileProvider) {
+    JvmMetadataDetector createJvmMetadataDetector(GradleUserHomeDirProvider gradleUserHomeDirProvider, FileLockManager fileLockManager, ExecutorFactory executorFactory, ExecHandleFactory execHandleFactory, TemporaryFileProvider temporaryFileProvider, OutputEventListener outputEventListener, Clock clock) {
+        ProgressLoggerFactory progressLoggerFactory = new DefaultProgressLoggerFactory(new ProgressLoggingBridge(outputEventListener), clock, new DefaultBuildOperationIdFactory());
+        CacheFactory defaultCacheFactory = new DefaultCacheFactory(fileLockManager, executorFactory, progressLoggerFactory);
+        File globalCacheDir = new File(gradleUserHomeDirProvider.getGradleUserHomeDirectory(), GLOBAL_CACHE_DIR_NAME);
+        DefaultUnscopedCacheBuilderFactory cacheBuilderFactory = new DefaultUnscopedCacheBuilderFactory(defaultCacheFactory);
         return new CachingJvmMetadataDetector(
             new ReportingJvmMetadataDetector(
                 new DefaultJvmMetadataDetector(execHandleFactory, temporaryFileProvider),
                 new InvalidInstallationWarningReporter()
-            )
+            ),
+            new DefaultGlobalScopedCacheBuilderFactory(globalCacheDir, cacheBuilderFactory)
         );
     }
 

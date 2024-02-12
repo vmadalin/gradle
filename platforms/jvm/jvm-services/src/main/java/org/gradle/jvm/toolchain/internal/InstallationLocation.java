@@ -19,6 +19,7 @@ package org.gradle.jvm.toolchain.internal;
 import org.gradle.api.Describable;
 
 import java.io.File;
+import java.io.IOException;
 
 public class InstallationLocation implements Describable {
 
@@ -40,6 +41,14 @@ public class InstallationLocation implements Describable {
 
     public File getLocation() {
         return location;
+    }
+
+    public File getCanonicalFile() {
+        try {
+            return location.getCanonicalFile();
+        } catch (IOException e) {
+            return location;
+        }
     }
 
     @Override

@@ -18,7 +18,14 @@ package org.gradle.jvm.toolchain.internal
 
 import org.gradle.api.internal.file.TestFiles
 import org.gradle.api.logging.Logger
+import org.gradle.cache.internal.DefaultCacheFactory
+import org.gradle.cache.internal.DefaultFileLockManagerTestHelper
+import org.gradle.cache.internal.DefaultUnscopedCacheBuilderFactory
+import org.gradle.cache.internal.scopes.DefaultGlobalScopedCacheBuilderFactory
+import org.gradle.initialization.GradleUserHomeDirProvider
+import org.gradle.initialization.layout.GlobalCacheDir
 import org.gradle.internal.SystemProperties
+import org.gradle.internal.concurrent.DefaultExecutorFactory
 import org.gradle.internal.jvm.inspection.CachingJvmMetadataDetector
 import org.gradle.internal.jvm.inspection.DefaultJvmMetadataDetector
 import org.gradle.internal.jvm.inspection.JavaInstallationRegistry
@@ -255,7 +262,21 @@ class JavaInstallationRegistryTest extends Specification {
         def execHandleFactory = TestFiles.execHandleFactory();
         def temporaryFileProvider = TestFiles.tmpDirTemporaryFileProvider(new File(SystemProperties.getInstance().getJavaIoTmpDir()));
         def defaultJvmMetadataDetector = new DefaultJvmMetadataDetector(execHandleFactory, temporaryFileProvider)
-        new CachingJvmMetadataDetector(defaultJvmMetadataDetector)
+
+        def globalCacheDir = new GlobalCacheDir(createHomeDirProvider())
+        def cacheFactory = new DefaultCacheFactory(DefaultFileLockManagerTestHelper.createDefaultFileLockManager(), new DefaultExecutorFactory(), new NoOpProgressLoggerFactory())
+        def cacheBuilderFactory = new DefaultUnscopedCacheBuilderFactory(cacheFactory)
+        def globalScopedCacheBuilderFactory = new DefaultGlobalScopedCacheBuilderFactory(globalCacheDir.dir, cacheBuilderFactory)
+        new CachingJvmMetadataDetector(defaultJvmMetadataDetector, globalScopedCacheBuilderFactory)
+    }
+
+    private GradleUserHomeDirProvider createHomeDirProvider() {
+        return new GradleUserHomeDirProvider() {
+            @Override
+            File getGradleUserHomeDirectory() {
+                return tempFolder
+            }
+        }
     }
 
     private JavaInstallationRegistry newRegistry(File... location) {

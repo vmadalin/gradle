@@ -30,6 +30,9 @@ import org.gradle.jvm.toolchain.JvmVendorSpec
 import org.gradle.jvm.toolchain.internal.DefaultToolchainSpec
 import org.gradle.jvm.toolchain.internal.JvmInstallationMetadataMatcher
 import org.gradle.util.TestUtil
+import org.gradle.util.GradleVersion
+
+import java.util.regex.Pattern
 
 abstract class DaemonToolchainIntegrationSpec extends AbstractIntegrationSpec {
 
@@ -66,6 +69,14 @@ abstract class DaemonToolchainIntegrationSpec extends AbstractIntegrationSpec {
         def result = fails 'help'
         failureDescriptionContains(expectedExceptionDescription)
         return result
+    }
+
+    protected def cleanToolchainsMetadataCache() {
+        executer.gradleUserHomeDir.file("caches", GradleVersion.current().version, "toolchainsMetadata").deleteDir()
+    }
+
+    protected int countMatches(String pattern, String text) {
+        return Pattern.compile(Pattern.quote(pattern)).matcher(text).count
     }
 
     private def addDaemonJvmValidation(Jvm expectedDaemonJvm, Boolean hasDaemonToolchainCriteria = true) {

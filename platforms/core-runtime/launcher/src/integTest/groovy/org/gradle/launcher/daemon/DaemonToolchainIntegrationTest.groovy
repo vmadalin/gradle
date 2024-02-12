@@ -102,4 +102,65 @@ class DaemonToolchainIntegrationTest extends DaemonToolchainIntegrationSpec {
         expect:
         succeedsSimpleTaskWithDaemonJvm(jvm)
     }
+
+    @Requires(IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable)
+    def "Given non existing toolchain metadata cache When execute any consecutive tasks Then metadata is resolved only for the first build"() {
+        def otherJvm = AvailableJavaHomes.differentVersion
+        def otherMetadata = AvailableJavaHomes.getJvmInstallationMetadata(otherJvm)
+
+        given:
+        cleanToolchainsMetadataCache()
+        createDaemonJvmToolchainCriteria(otherMetadata.languageVersion.majorVersion, otherMetadata.vendor.knownVendor.name())
+
+        when:
+        def results = (0..2).collect {
+            executer
+                .withArgument("--info")
+                .requireIsolatedDaemons()
+                .withStackTraceChecksDisabled() // expect the info logs from JVM metadata detector to contain the stack trace
+                .withTasks("tasks")
+                .run()
+        }
+
+        then:
+        results.size() == 3
+        def metadataAccessMarker = "Received JVM installation metadata from '$otherJvm.javaHome.absolutePath'"
+        1 == countMatches(metadataAccessMarker, results[0].plainTextOutput)
+        0 == countMatches(metadataAccessMarker, results[1].plainTextOutput)
+        0 == countMatches(metadataAccessMarker, results[2].plainTextOutput)
+    }
+
+    @Requires(IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable)
+    def "Given daemon toolchain and task with specific toolchain When execute task Then metadata is resolved only one time storing resolution into cache shared between daemon and task toolchain"() {
+        def otherJvm = AvailableJavaHomes.differentVersion
+        def otherMetadata = AvailableJavaHomes.getJvmInstallationMetadata(otherJvm)
+
+        given:
+        cleanToolchainsMetadataCache()
+        createDaemonJvmToolchainCriteria(otherMetadata.languageVersion.majorVersion, otherMetadata.vendor.knownVendor.name())
+        buildFile << """
+            apply plugin: 'jvm-toolchains'
+            tasks.register('exec', JavaExec) {
+                javaLauncher.set(javaToolchains.launcherFor {
+                    languageVersion = JavaLanguageVersion.of($otherMetadata.languageVersion.majorVersion)
+                    vendor = JvmVendorSpec.matching("${otherMetadata.vendor.knownVendor.name()}")
+                })
+                mainClass.set("None")
+                jvmArgs = ['-version']
+            }
+        """
+
+        when:
+        def result = executer
+            .withToolchainDetectionEnabled()
+            .withArgument("--info")
+            .requireIsolatedDaemons()
+            .withStackTraceChecksDisabled() // expect the info logs from JVM metadata detector to contain the stack trace
+            .withTasks("exec")
+            .run()
+
+        then:
+        def metadataAccessMarker = "Received JVM installation metadata from '$otherJvm.javaHome.absolutePath'"
+        1 == countMatches(metadataAccessMarker, result.plainTextOutput)
+    }
 }
