@@ -17,16 +17,14 @@
 package org.gradle.interal.buildconfiguration.tasks
 
 import org.gradle.api.JavaVersion
-import org.gradle.integtests.fixtures.AvailableJavaHomes
-import org.gradle.integtests.fixtures.daemon.DaemonToolchainIntegrationSpec
+import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.internal.buildconfiguration.BuildPropertiesDefaults
 import org.gradle.internal.buildconfiguration.fixture.DaemonJvmPropertiesFixture
-import org.gradle.internal.jvm.Jvm
 import org.gradle.test.precondition.Requires
 import org.gradle.test.preconditions.IntegTestPreconditions
 
 @Requires(IntegTestPreconditions.NotEmbeddedExecutor)
-class UpdateDaemonJvmTaskIntegrationTest extends DaemonToolchainIntegrationSpec {
+class UpdateDaemonJvmTaskIntegrationTest extends AbstractIntegrationSpec {
 
     final daemonJvmFixture = new DaemonJvmPropertiesFixture(testDirectory)
 
@@ -153,27 +151,5 @@ class UpdateDaemonJvmTaskIntegrationTest extends DaemonToolchainIntegrationSpec 
         daemonJvmFixture.assertJvmCriteria(20, "AZUL")
         daemonJvmFixture.assertBuildPropertyExist("test.property=testValue")
         daemonJvmFixture.assertBuildPropertyExist("another.property=anotherValue")
-    }
-
-    def "Given defined invalid criteria When execute updateDaemonJvm with different criteria Then criteria get modified using java home"() {
-        def currentJvm = Jvm.current()
-
-        given:
-        createDaemonJvmToolchainCriteria("-1", "invalidVendor")
-
-        expect:
-        succeedsTaskWithDaemonJvm(currentJvm, false, "updateDaemonJvm", "--toolchain-version=20", "--toolchain-vendor=AZUL")
-    }
-
-    @Requires(IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable)
-    def "Given defined valid criteria matching with local toolchain When execute updateDaemonJvm with different criteria Then criteria get modified using the expected local toolchain"() {
-        def otherJvm = AvailableJavaHomes.differentVersion
-        def otherMetadata = AvailableJavaHomes.getJvmInstallationMetadata(otherJvm)
-
-        given:
-        createDaemonJvmToolchainCriteria(otherMetadata.languageVersion.majorVersion, otherMetadata.vendor.knownVendor.name())
-
-        expect:
-        succeedsTaskWithDaemonJvm(otherJvm, true, "updateDaemonJvm", "--toolchain-version=20", "--toolchain-vendor=AZUL")
     }
 }

@@ -41,13 +41,19 @@ import org.gradle.internal.jvm.Jvm;
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.logging.events.OutputEventListener;
+import org.gradle.internal.logging.progress.DefaultProgressLoggerFactory;
+import org.gradle.internal.logging.progress.ProgressLoggerFactory;
+import org.gradle.internal.logging.services.ProgressLoggingBridge;
 import org.gradle.internal.nativeintegration.services.NativeServices;
+import org.gradle.internal.operations.DefaultBuildOperationIdFactory;
+import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.service.ServiceRegistryBuilder;
 import org.gradle.internal.service.scopes.BasicGlobalScopeServices;
 import org.gradle.internal.service.scopes.GlobalScopeServices;
 import org.gradle.internal.service.scopes.GradleUserHomeScopeServiceRegistry;
 import org.gradle.internal.service.scopes.Scope;
+import org.gradle.internal.time.Clock;
 import org.gradle.launcher.bootstrap.ExecutionListener;
 import org.gradle.launcher.daemon.bootstrap.ForegroundDaemonAction;
 import org.gradle.launcher.daemon.client.DaemonClient;
@@ -87,6 +93,16 @@ class BuildActionsFactory implements CommandLineActionCreator {
             .parent(NativeServices.getInstance())
             .provider(new BasicGlobalScopeServices())
             .provider(new DaemonConfigurationServices())
+            .provider(new Object() {
+                @SuppressWarnings("unused")
+                void configure(ServiceRegistration registration) {
+                    registration.add(ProgressLoggerFactory.class, new DefaultProgressLoggerFactory(
+                        new ProgressLoggingBridge(loggingServices.get(OutputEventListener.class)),
+                        loggingServices.get(Clock.class),
+                        new DefaultBuildOperationIdFactory())
+                    );
+                }
+            })
             .build();
         this.loggingServices = loggingServices;
         fileCollectionFactory = basicServices.get(FileCollectionFactory.class);

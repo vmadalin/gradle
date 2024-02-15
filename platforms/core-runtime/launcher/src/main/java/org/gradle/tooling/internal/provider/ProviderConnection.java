@@ -18,8 +18,11 @@ package org.gradle.tooling.internal.provider;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import org.gradle.StartParameter;
+import org.gradle.TaskExecutionRequest;
 import org.gradle.api.internal.StartParameterInternal;
 import org.gradle.api.internal.file.FileCollectionFactory;
+import org.gradle.api.internal.provider.PropertyFactory;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.cli.CommandLineParser;
 import org.gradle.cli.ParsedCommandLine;
@@ -31,8 +34,10 @@ import org.gradle.initialization.DefaultBuildRequestMetaData;
 import org.gradle.initialization.NoOpBuildEventConsumer;
 import org.gradle.initialization.layout.BuildLayoutFactory;
 import org.gradle.internal.build.event.BuildEventSubscriptions;
+import org.gradle.internal.buildconfiguration.tasks.UpdateDaemonJvmTask;
 import org.gradle.internal.invocation.BuildAction;
 import org.gradle.internal.jvm.Jvm;
+import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.logging.LoggingManagerInternal;
 import org.gradle.internal.logging.events.OutputEventListener;
@@ -48,7 +53,10 @@ import org.gradle.launcher.daemon.client.DaemonClient;
 import org.gradle.launcher.daemon.client.DaemonClientFactory;
 import org.gradle.launcher.daemon.client.NotifyDaemonAboutChangedPathsClient;
 import org.gradle.launcher.daemon.configuration.DaemonBuildOptions;
+import org.gradle.launcher.daemon.configuration.DaemonJvmToolchainCriteriaOptions;
+import org.gradle.launcher.daemon.configuration.DaemonJvmToolchainSpec;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
+import org.gradle.launcher.daemon.jvm.DaemonJavaToolchainQueryService;
 import org.gradle.launcher.exec.BuildActionExecuter;
 import org.gradle.launcher.exec.BuildActionParameters;
 import org.gradle.launcher.exec.BuildActionResult;
@@ -99,23 +107,27 @@ public class ProviderConnection {
     private final PayloadSerializer payloadSerializer;
     private final BuildLayoutFactory buildLayoutFactory;
     private final DaemonClientFactory daemonClientFactory;
+    private final DaemonJavaToolchainQueryService daemonJavaToolchainQueryService;
     private final BuildActionExecuter<BuildActionParameters, BuildRequestContext> embeddedExecutor;
     private final ServiceRegistry sharedServices;
     private final JvmVersionDetector jvmVersionDetector;
     private final FileCollectionFactory fileCollectionFactory;
+    private final PropertyFactory propertyFactory;
     private GradleVersion consumerVersion;
 
     public ProviderConnection(
-        ServiceRegistry sharedServices, BuildLayoutFactory buildLayoutFactory, DaemonClientFactory daemonClientFactory,
-        BuildActionExecuter<BuildActionParameters, BuildRequestContext> embeddedExecutor, PayloadSerializer payloadSerializer, JvmVersionDetector jvmVersionDetector, FileCollectionFactory fileCollectionFactory
+        ServiceRegistry sharedServices, BuildLayoutFactory buildLayoutFactory, DaemonClientFactory daemonClientFactory, DaemonJavaToolchainQueryService daemonJavaToolchainQueryService,
+        BuildActionExecuter<BuildActionParameters, BuildRequestContext> embeddedExecutor, PayloadSerializer payloadSerializer, JvmVersionDetector jvmVersionDetector, FileCollectionFactory fileCollectionFactory, PropertyFactory propertyFactory
     ) {
         this.buildLayoutFactory = buildLayoutFactory;
         this.daemonClientFactory = daemonClientFactory;
+        this.daemonJavaToolchainQueryService = daemonJavaToolchainQueryService;
         this.embeddedExecutor = embeddedExecutor;
         this.payloadSerializer = payloadSerializer;
         this.sharedServices = sharedServices;
         this.jvmVersionDetector = jvmVersionDetector;
         this.fileCollectionFactory = fileCollectionFactory;
+        this.propertyFactory = propertyFactory;
     }
 
     public void configure(ProviderConnectionParameters parameters, GradleVersion consumerVersion) {
@@ -146,9 +158,8 @@ public class ProviderConnection {
                 params.daemonParams.getEffectiveJvmArgs());
         }
 
-        StartParameterInternal startParameter = new ProviderStartParameterConverter().toStartParameter(providerParameters, params.buildLayout, params.properties);
         ProgressListenerConfiguration listenerConfig = ProgressListenerConfiguration.from(providerParameters, consumerVersion, payloadSerializer);
-        BuildAction action = new BuildModelAction(startParameter, modelName, tasks != null, listenerConfig.clientSubscriptions);
+        BuildAction action = new BuildModelAction(params.startParameter, modelName, tasks != null, listenerConfig.clientSubscriptions);
         return run(action, cancellationToken, listenerConfig, listenerConfig.buildEventConsumer, providerParameters, params);
     }
 
@@ -166,9 +177,8 @@ public class ProviderConnection {
         List<String> tasks = providerParameters.getTasks();
         SerializedPayload serializedAction = payloadSerializer.serialize(clientAction);
         Parameters params = initParams(providerParameters);
-        StartParameterInternal startParameter = new ProviderStartParameterConverter().toStartParameter(providerParameters, params.buildLayout, params.properties);
         ProgressListenerConfiguration listenerConfig = ProgressListenerConfiguration.from(providerParameters, consumerVersion, payloadSerializer);
-        BuildAction action = new ClientProvidedBuildAction(startParameter, serializedAction, tasks != null, listenerConfig.clientSubscriptions);
+        BuildAction action = new ClientProvidedBuildAction(params.startParameter, serializedAction, tasks != null, listenerConfig.clientSubscriptions);
         return run(action, cancellationToken, listenerConfig, listenerConfig.buildEventConsumer, providerParameters, params);
     }
 
@@ -181,10 +191,9 @@ public class ProviderConnection {
         List<String> tasks = providerParameters.getTasks();
         SerializedPayload serializedAction = payloadSerializer.serialize(clientPhasedAction);
         Parameters params = initParams(providerParameters);
-        StartParameterInternal startParameter = new ProviderStartParameterConverter().toStartParameter(providerParameters, params.buildLayout, params.properties);
         FailsafePhasedActionResultListener failsafePhasedActionResultListener = new FailsafePhasedActionResultListener(resultListener);
         ProgressListenerConfiguration listenerConfig = ProgressListenerConfiguration.from(providerParameters, consumerVersion, payloadSerializer);
-        BuildAction action = new ClientProvidedPhasedAction(startParameter, serializedAction, tasks != null, listenerConfig.clientSubscriptions);
+        BuildAction action = new ClientProvidedPhasedAction(params.startParameter, serializedAction, tasks != null, listenerConfig.clientSubscriptions);
         try {
             return run(action, cancellationToken, listenerConfig, new PhasedActionEventConsumer(failsafePhasedActionResultListener, payloadSerializer, listenerConfig.buildEventConsumer),
                 providerParameters, params);
@@ -195,9 +204,8 @@ public class ProviderConnection {
 
     public Object runTests(ProviderInternalTestExecutionRequest testExecutionRequest, BuildCancellationToken cancellationToken, ProviderOperationParameters providerParameters) {
         Parameters params = initParams(providerParameters);
-        StartParameterInternal startParameter = new ProviderStartParameterConverter().toStartParameter(providerParameters, params.buildLayout, params.properties);
         ProgressListenerConfiguration listenerConfig = ProgressListenerConfiguration.from(providerParameters, consumerVersion, payloadSerializer);
-        TestExecutionRequestAction action = TestExecutionRequestAction.create(listenerConfig.clientSubscriptions, startParameter, testExecutionRequest);
+        TestExecutionRequestAction action = TestExecutionRequestAction.create(listenerConfig.clientSubscriptions, params.startParameter, testExecutionRequest);
         return run(action, cancellationToken, listenerConfig, listenerConfig.buildEventConsumer, providerParameters, params);
     }
 
@@ -321,11 +329,9 @@ public class ProviderConnection {
             daemonParams.setEnvironmentVariables(envVariables);
         }
 
-        File javaHome = operationParameters.getJavaHome();
-        if (javaHome != null) {
-            daemonParams.setJvm(Jvm.forHome(javaHome));
-        }
-        daemonParams.applyDefaultsFor(jvmVersionDetector.getJavaVersion(daemonParams.getEffectiveJvm()));
+        StartParameterInternal startParameter = new ProviderStartParameterConverter().toStartParameter(operationParameters, buildLayoutResult, properties);
+
+        configDaemonJvm(operationParameters, daemonParams, startParameter, properties);
 
         if (operationParameters.getDaemonMaxIdleTimeValue() != null && operationParameters.getDaemonMaxIdleTimeUnits() != null) {
             int idleTimeout = (int) operationParameters.getDaemonMaxIdleTimeUnits().toMillis(operationParameters.getDaemonMaxIdleTimeValue());
@@ -341,16 +347,45 @@ public class ProviderConnection {
             GUtil.addToMap(effectiveSystemProperties, System.getProperties());
             effectiveSystemProperties.putAll(daemonParams.getMutableAndImmutableSystemProperties());
         }
-        return new Parameters(daemonParams, buildLayoutResult, properties, effectiveSystemProperties);
+
+        return new Parameters(startParameter, daemonParams, buildLayoutResult, properties, effectiveSystemProperties);
+    }
+
+    private void configDaemonJvm(ProviderOperationParameters operationParameters, DaemonParameters daemonParameters, StartParameterInternal startParameters, AllProperties properties) {
+        File javaHome = operationParameters.getJavaHome();
+        try {
+            DaemonJvmToolchainSpec jvmToolchainCriteria = new DaemonJvmToolchainSpec(propertyFactory);
+            jvmToolchainCriteria = new DaemonJvmToolchainCriteriaOptions().propertiesConverter().convert(properties.getBuildProperties(), jvmToolchainCriteria);
+            if (jvmToolchainCriteria.getLanguageVersion().isPresent()) {
+                JvmInstallationMetadata installation = daemonJavaToolchainQueryService.findMatchingToolchain(jvmToolchainCriteria, startParameters);
+                javaHome = installation.getJavaHome().toFile();
+            }
+        } catch (Exception exception) {
+            if (!isExecutingUpdateDaemonJvmTask(startParameters)) {
+                throw exception;
+            }
+        } finally {
+            if (javaHome != null) {
+                daemonParameters.setJvm(Jvm.forHome(javaHome));
+            }
+            daemonParameters.applyDefaultsFor(jvmVersionDetector.getJavaVersion(daemonParameters.getEffectiveJvm()));
+        }
+    }
+
+    private boolean isExecutingUpdateDaemonJvmTask(StartParameter startParameters) {
+        List<TaskExecutionRequest> taskExecutionRequests = startParameters.getTaskRequests();
+        return taskExecutionRequests.size() == 1 && taskExecutionRequests.get(0).getArgs().contains(UpdateDaemonJvmTask.TASK_NAME);
     }
 
     private static class Parameters {
         final DaemonParameters daemonParams;
+        final StartParameterInternal startParameter;
         final BuildLayoutResult buildLayout;
         final AllProperties properties;
         final Map<String, String> tapiSystemProperties;
 
-        public Parameters(DaemonParameters daemonParams, BuildLayoutResult buildLayout, AllProperties properties, Map<String, String> tapiSystemProperties) {
+        public Parameters(StartParameterInternal startParameter, DaemonParameters daemonParams, BuildLayoutResult buildLayout, AllProperties properties, Map<String, String> tapiSystemProperties) {
+            this.startParameter = startParameter;
             this.daemonParams = daemonParams;
             this.buildLayout = buildLayout;
             this.properties = properties;

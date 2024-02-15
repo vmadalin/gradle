@@ -16,86 +16,13 @@
 
 package org.gradle.launcher.daemon
 
-import org.gradle.integtests.fixtures.AvailableJavaHomes
-import org.gradle.integtests.fixtures.daemon.DaemonToolchainIntegrationSpec
-import org.gradle.internal.jvm.Jvm
-import org.gradle.test.precondition.Requires
-import org.gradle.test.preconditions.IntegTestPreconditions
+import org.gradle.integtests.fixtures.daemon.AbstractDaemonToolchainCoexistWithCurrentOptionsIntegrationTest
+import org.gradle.integtests.fixtures.executer.TaskExecuter
 
-@Requires(IntegTestPreconditions.NotEmbeddedExecutor)
-class DaemonToolchainCoexistWithCurrentOptionsIntegrationTest extends DaemonToolchainIntegrationSpec {
+class DaemonToolchainCoexistWithCurrentOptionsIntegrationTest extends AbstractDaemonToolchainCoexistWithCurrentOptionsIntegrationTest {
 
-    @Requires(IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable)
-    def "Given disabled auto-detection When using daemon toolchain Then option is ignored resolving with expected toolchain"() {
-        def otherJvm = AvailableJavaHomes.differentVersion
-
-        given:
-        createDaemonJvmToolchainCriteria(otherJvm)
-        executer.withArgument("-Porg.gradle.java.installations.auto-detect=false")
-
-        expect:
-        succeedsSimpleTaskWithDaemonJvm(otherJvm)
-    }
-
-    @Requires(IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable)
-    def "Given defined org.gradle.java.home gradle property When using daemon toolchain Then option is ignored resolving with expected toolchain"() {
-        def currentJvm = Jvm.current()
-        def otherJvm = AvailableJavaHomes.differentVersion
-
-        given:
-        createDaemonJvmToolchainCriteria(otherJvm)
-        file("gradle.properties").writeProperties("org.gradle.java.home": currentJvm.javaHome.canonicalPath)
-
-        expect:
-        succeedsSimpleTaskWithDaemonJvm(otherJvm)
-    }
-
-    @Requires(IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable)
-    def "Given daemon toolchain properties When executing any task passing them as arguments Then those are ignored since aren't defined on build properties file"() {
-        def currentJvm = Jvm.current()
-        def otherJvm = AvailableJavaHomes.differentVersion
-        def otherJvmMetadata = AvailableJavaHomes.getJvmInstallationMetadata(otherJvm)
-
-        given:
-        executer
-            .withArgument("-Pdaemon.jvm.toolchain.version=$otherJvmMetadata.javaVersion")
-            .withArgument("-Pdaemon.jvm.toolchain.vendor=$otherJvmMetadata.vendor.knownVendor")
-
-        expect:
-        succeedsSimpleTaskWithDaemonJvm(currentJvm)
-    }
-
-    @Requires(IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable)
-    def "Given daemon toolchain properties defined on gradle properties When executing any task Then those are ignored since aren't defined on build properties file"() {
-        def currentJvm = Jvm.current()
-        def otherJvm = AvailableJavaHomes.differentVersion
-        def otherJvmMetadata = AvailableJavaHomes.getJvmInstallationMetadata(otherJvm)
-
-        given:
-        file("gradle.properties")
-            .writeProperties(
-                "daemon.jvm.toolchain.version": otherJvmMetadata.javaVersion,
-                "daemon.jvm.toolchain.vendor": otherJvmMetadata.vendor.knownVendor.name()
-            )
-
-        expect:
-        succeedsSimpleTaskWithDaemonJvm(currentJvm)
-    }
-
-    @Requires(IntegTestPreconditions.JavaHomeWithDifferentVersionAvailable)
-    def "Given defined org.gradle.java.home under Build properties When executing any task Then this is ignored since isn't defined on gradle properties file"() {
-        def currentJvm = Jvm.current()
-        def otherJvm = AvailableJavaHomes.differentVersion
-        def otherJvmMetadata = AvailableJavaHomes.getJvmInstallationMetadata(otherJvm)
-
-        given:
-        createDir("gradle")
-        file("gradle/gradle-build.properties")
-            .writeProperties(
-                "org.gradle.java.home": otherJvmMetadata.javaVersion,
-            )
-
-        expect:
-        succeedsSimpleTaskWithDaemonJvm(currentJvm)
+    @Override
+    TaskExecuter createTaskExecuter() {
+        return new CommandLineTaskExecuter(executer)
     }
 }

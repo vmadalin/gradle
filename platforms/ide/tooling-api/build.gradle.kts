@@ -62,11 +62,13 @@ dependencies {
     testFixturesImplementation(project(":base-services-groovy"))
     testFixturesImplementation(project(":internal-testing"))
     testFixturesImplementation(project(":internal-integ-testing"))
+    testFixturesImplementation(project(":toolchains-jvm-shared"))
     testFixturesImplementation(libs.commonsIo)
     testFixturesImplementation(libs.slf4jApi)
 
     integTestImplementation(project(":jvm-services"))
     integTestImplementation(project(":persistent-cache"))
+    integTestImplementation(project(":toolchains-jvm-shared"))
 
     crossVersionTestImplementation(project(":jvm-services"))
     crossVersionTestImplementation(testFixtures(project(":problems-api")))

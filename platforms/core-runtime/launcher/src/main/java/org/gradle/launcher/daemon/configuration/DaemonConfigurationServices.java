@@ -20,12 +20,7 @@ import net.rubygrapefruit.platform.WindowsRegistry;
 import org.gradle.cache.FileLockManager;
 import org.gradle.initialization.GradleUserHomeDirProvider;
 import org.gradle.internal.jvm.inspection.JvmMetadataDetector;
-import org.gradle.internal.logging.events.OutputEventListener;
-import org.gradle.internal.logging.progress.DefaultProgressLoggerFactory;
 import org.gradle.internal.logging.progress.ProgressLoggerFactory;
-import org.gradle.internal.logging.services.ProgressLoggingBridge;
-import org.gradle.internal.operations.DefaultBuildOperationIdFactory;
-import org.gradle.internal.time.Clock;
 import org.gradle.jvm.toolchain.internal.install.JdkCacheDirectory;
 import org.gradle.launcher.daemon.jvm.DaemonJavaInstallationRegistryFactory;
 import org.gradle.process.internal.ExecFactory;
@@ -39,14 +34,6 @@ public class DaemonConfigurationServices {
             execFactory,
             progressLoggerFactory,
             windowsRegistry
-        );
-    }
-
-    ProgressLoggerFactory createProgressLoggerFactory(OutputEventListener outputEventListener, Clock clock) {
-        return new DefaultProgressLoggerFactory(
-            new ProgressLoggingBridge(outputEventListener),
-            clock,
-            new DefaultBuildOperationIdFactory()
         );
     }
 

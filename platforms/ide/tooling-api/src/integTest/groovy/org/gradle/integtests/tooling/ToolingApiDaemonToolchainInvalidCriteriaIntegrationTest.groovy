@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-package org.gradle.launcher.daemon
+package org.gradle.integtests.tooling
 
-import org.gradle.integtests.fixtures.daemon.AbstractDaemonToolchainIntegrationTest
+import org.gradle.integtests.fixtures.daemon.AbstractDaemonToolchainInvalidCriteriaIntegrationTest
 import org.gradle.integtests.fixtures.executer.TaskExecuter
+import org.gradle.integtests.tooling.fixture.ToolingApiTaskExecuter
 
-class DaemonToolchainIntegrationTest extends AbstractDaemonToolchainIntegrationTest {
+class ToolingApiDaemonToolchainInvalidCriteriaIntegrationTest extends AbstractDaemonToolchainInvalidCriteriaIntegrationTest {
 
     @Override
     TaskExecuter createTaskExecuter() {
-        return new CommandLineTaskExecuter(executer)
+        return new ToolingApiTaskExecuter(executer, settingsFile)
     }
 }
+

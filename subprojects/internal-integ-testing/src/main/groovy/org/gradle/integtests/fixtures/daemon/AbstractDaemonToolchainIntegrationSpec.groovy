@@ -19,7 +19,8 @@ package org.gradle.integtests.fixtures.daemon
 import org.gradle.api.JavaVersion
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.AvailableJavaHomes
-import org.gradle.integtests.fixtures.executer.ExecutionResult
+import org.gradle.integtests.fixtures.executer.OutputScrapingExecutionFailure
+import org.gradle.integtests.fixtures.executer.TaskExecuter
 import org.gradle.internal.jvm.Jvm
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadata
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadataComparator
@@ -29,12 +30,41 @@ import org.gradle.jvm.toolchain.JavaToolchainSpec
 import org.gradle.jvm.toolchain.JvmVendorSpec
 import org.gradle.jvm.toolchain.internal.DefaultToolchainSpec
 import org.gradle.jvm.toolchain.internal.JvmInstallationMetadataMatcher
+import org.gradle.test.precondition.Requires
+import org.gradle.test.preconditions.IntegTestPreconditions
 import org.gradle.util.TestUtil
-import org.gradle.util.GradleVersion
 
-import java.util.regex.Pattern
+@Requires(IntegTestPreconditions.NotEmbeddedExecutor)
+abstract class AbstractDaemonToolchainIntegrationSpec extends AbstractIntegrationSpec {
 
-abstract class DaemonToolchainIntegrationSpec extends AbstractIntegrationSpec {
+    abstract TaskExecuter createTaskExecuter()
+
+    TaskExecuter taskExecuter
+
+    def setup() {
+        taskExecuter = createTaskExecuter()
+        taskExecuter.configure()
+    }
+
+    protected succeedsSimpleTaskWithDaemonJvm(Jvm expectedDaemonJvm, List<String> arguments = [], Boolean daemonToolchainCriteria = true) {
+        return succeedsTaskWithDaemonJvm(expectedDaemonJvm, arguments, daemonToolchainCriteria, "help")
+    }
+
+    protected succeedsTaskWithDaemonJvm(Jvm expectedDaemonJvm, List<String> arguments = [], Boolean hasDaemonToolchainCriteria = true,  String... tasks) {
+        addDaemonJvmValidation(expectedDaemonJvm, hasDaemonToolchainCriteria)
+        def result = taskExecuter.executeTasks(false, arguments, tasks)
+        assert !(result instanceof OutputScrapingExecutionFailure)
+
+        return true
+    }
+
+    protected failsSimpleTaskWithDescription(String expectedExceptionDescription, List<String> arguments = []) {
+        def result = taskExecuter.executeTasks(false, arguments, "help")
+        assert result instanceof OutputScrapingExecutionFailure
+        result.assertHasErrorOutput(expectedExceptionDescription)
+
+        return true
+    }
 
     protected def createDaemonJvmToolchainCriteria(Jvm jvm) {
         def jvmMetadata = AvailableJavaHomes.getJvmInstallationMetadata(jvm)
@@ -54,29 +84,6 @@ abstract class DaemonToolchainIntegrationSpec extends AbstractIntegrationSpec {
         }
 
         file("gradle/gradle-build.properties") << properties.join(System.getProperty("line.separator"))
-    }
-
-    protected ExecutionResult succeedsSimpleTaskWithDaemonJvm(Jvm expectedDaemonJvm, Boolean daemonToolchainCriteria = true) {
-        return succeedsTaskWithDaemonJvm(expectedDaemonJvm, daemonToolchainCriteria, "help")
-    }
-
-    protected ExecutionResult succeedsTaskWithDaemonJvm(Jvm expectedDaemonJvm, Boolean hasDaemonToolchainCriteria = true, String... tasks) {
-        addDaemonJvmValidation(expectedDaemonJvm, hasDaemonToolchainCriteria)
-        return succeeds(tasks)
-    }
-
-    protected ExecutionResult failsSimpleTaskWithDescription(String expectedExceptionDescription) {
-        def result = fails 'help'
-        failureDescriptionContains(expectedExceptionDescription)
-        return result
-    }
-
-    protected def cleanToolchainsMetadataCache() {
-        executer.gradleUserHomeDir.file("caches", GradleVersion.current().version, "toolchainsMetadata").deleteDir()
-    }
-
-    protected int countMatches(String pattern, String text) {
-        return Pattern.compile(Pattern.quote(pattern)).matcher(text).count
     }
 
     private def addDaemonJvmValidation(Jvm expectedDaemonJvm, Boolean hasDaemonToolchainCriteria = true) {

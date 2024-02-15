@@ -14,15 +14,11 @@
  * limitations under the License.
  */
 
-package org.gradle.launcher.daemon
+package org.gradle.integtests.fixtures.executer
 
-import org.gradle.integtests.fixtures.daemon.AbstractDaemonToolchainIntegrationTest
-import org.gradle.integtests.fixtures.executer.TaskExecuter
+interface TaskExecuter {
 
-class DaemonToolchainIntegrationTest extends AbstractDaemonToolchainIntegrationTest {
+    default def configure() {}
 
-    @Override
-    TaskExecuter createTaskExecuter() {
-        return new CommandLineTaskExecuter(executer)
-    }
+    ExecutionResult executeTasks(boolean requireIsolatedUserHome, List<String> arguments, String... tasks)
 }

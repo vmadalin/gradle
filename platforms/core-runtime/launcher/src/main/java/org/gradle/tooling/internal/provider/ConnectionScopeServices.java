@@ -17,6 +17,7 @@
 package org.gradle.tooling.internal.provider;
 
 import org.gradle.api.internal.file.FileCollectionFactory;
+import org.gradle.api.internal.provider.PropertyFactory;
 import org.gradle.initialization.layout.BuildLayoutFactory;
 import org.gradle.internal.agents.AgentStatus;
 import org.gradle.internal.event.ListenerManager;
@@ -29,7 +30,10 @@ import org.gradle.launcher.cli.converter.BuildLayoutConverter;
 import org.gradle.launcher.daemon.client.DaemonClientFactory;
 import org.gradle.launcher.daemon.client.DaemonClientGlobalServices;
 import org.gradle.launcher.daemon.client.DaemonStopClient;
+import org.gradle.launcher.daemon.configuration.DaemonConfigurationServices;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
+import org.gradle.launcher.daemon.jvm.DaemonJavaInstallationRegistryFactory;
+import org.gradle.launcher.daemon.jvm.DaemonJavaToolchainQueryService;
 import org.gradle.launcher.exec.BuildExecuter;
 import org.gradle.tooling.internal.adapter.ProtocolToModelAdapter;
 import org.gradle.tooling.internal.provider.serialization.ClassLoaderCache;
@@ -48,6 +52,7 @@ public class ConnectionScopeServices {
     void configure(ServiceRegistration serviceRegistration) {
         serviceRegistration.addProvider(new GlobalScopeServices(true, AgentStatus.disabled()));
         serviceRegistration.addProvider(new DaemonClientGlobalServices());
+        serviceRegistration.addProvider(new DaemonConfigurationServices());
     }
 
     ShutdownCoordinator createShutdownCoordinator(ListenerManager listenerManager, DaemonClientFactory daemonClientFactory, OutputEventListener outputEventListener, FileCollectionFactory fileCollectionFactory) {
@@ -60,10 +65,12 @@ public class ConnectionScopeServices {
 
     ProviderConnection createProviderConnection(BuildExecuter buildActionExecuter,
                                                 DaemonClientFactory daemonClientFactory,
+                                                DaemonJavaInstallationRegistryFactory daemonJavaInstallationRegistryFactory,
                                                 BuildLayoutFactory buildLayoutFactory,
                                                 ServiceRegistry serviceRegistry,
                                                 JvmVersionDetector jvmVersionDetector,
                                                 FileCollectionFactory fileCollectionFactory,
+                                                PropertyFactory propertyFactory,
                                                 // This is here to trigger creation of the ShutdownCoordinator. Could do this in a nicer way
                                                 ShutdownCoordinator shutdownCoordinator) {
         ClassLoaderCache classLoaderCache = new ClassLoaderCache();
@@ -71,6 +78,7 @@ public class ConnectionScopeServices {
                 serviceRegistry,
                 buildLayoutFactory,
                 daemonClientFactory,
+                new DaemonJavaToolchainQueryService(daemonJavaInstallationRegistryFactory),
                 buildActionExecuter,
                 new PayloadSerializer(
                         new WellKnownClassLoaderRegistry(
@@ -82,7 +90,8 @@ public class ConnectionScopeServices {
                                 new ClasspathInferer(),
                                 classLoaderCache))),
             jvmVersionDetector,
-            fileCollectionFactory
+            fileCollectionFactory,
+            propertyFactory
         );
     }
 
