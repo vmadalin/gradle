@@ -37,11 +37,14 @@ import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.ServiceRegistrationProvider;
 import org.gradle.internal.service.scopes.AbstractGradleModuleServices;
 import org.gradle.jvm.toolchain.JavaToolchainResolverRegistry;
+import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.jvm.toolchain.internal.AsdfInstallationSupplier;
+import org.gradle.jvm.toolchain.internal.CurrentJvmToolchainSpec;
 import org.gradle.jvm.toolchain.internal.DefaultJavaToolchainResolverRegistry;
 import org.gradle.jvm.toolchain.internal.DefaultJavaToolchainService;
 import org.gradle.jvm.toolchain.internal.DefaultJvmToolchainManagement;
 import org.gradle.jvm.toolchain.internal.DefaultOsXJavaHomeCommand;
+import org.gradle.jvm.toolchain.internal.DefaultToolchainExternalResourceFactory;
 import org.gradle.jvm.toolchain.internal.InstallationSupplier;
 import org.gradle.jvm.toolchain.internal.IntellijInstallationSupplier;
 import org.gradle.jvm.toolchain.internal.JabbaInstallationSupplier;
@@ -57,6 +60,7 @@ import org.gradle.jvm.toolchain.internal.install.DefaultJavaToolchainProvisionin
 import org.gradle.jvm.toolchain.internal.install.DefaultJdkCacheDirectory;
 import org.gradle.jvm.toolchain.internal.install.SecureFileDownloader;
 import org.gradle.platform.internal.DefaultBuildPlatform;
+import org.gradle.jvm.toolchain.internal.install.JavaToolchainHttpRedirectVerifierFactory;
 
 import java.util.List;
 
@@ -65,6 +69,11 @@ public class ToolchainsJvmServices extends AbstractGradleModuleServices {
         @Provides
         protected DefaultBuildPlatform createBuildPlatform(ObjectFactory objectFactory) {
             return objectFactory.newInstance(DefaultBuildPlatform.class);
+        }
+
+        @Provides
+        protected JavaToolchainSpec createJavaToolchainSpec(ObjectFactory objectFactory) {
+            return objectFactory.newInstance(CurrentJvmToolchainSpec.class);
         }
 
         @Provides
@@ -123,7 +132,9 @@ public class ToolchainsJvmServices extends AbstractGradleModuleServices {
     public void registerProjectServices(ServiceRegistration registration) {
         registration.add(DefaultJavaToolchainService.class);
         registration.add(DefaultJavaToolchainProvisioningService.class);
+        registration.add(DefaultToolchainExternalResourceFactory.class);
         registration.add(SecureFileDownloader.class);
         registration.add(JavaToolchainQueryService.class);
+        registration.add(JavaToolchainHttpRedirectVerifierFactory.class);
     }
 }
