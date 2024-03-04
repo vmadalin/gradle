@@ -32,6 +32,7 @@ import org.gradle.jvm.toolchain.JavaToolchainSpec
 import org.gradle.jvm.toolchain.JvmImplementation
 import org.gradle.jvm.toolchain.JvmVendorSpec
 import org.gradle.jvm.toolchain.internal.install.JavaToolchainProvisioningService
+import org.gradle.jvm.toolchain.internal.install.NoToolchainAvailableException
 import org.gradle.platform.Architecture
 import org.gradle.platform.BuildPlatform
 import org.gradle.util.TestUtil

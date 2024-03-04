@@ -21,20 +21,19 @@ import org.gradle.api.internal.provider.PropertyFactory;
 import org.gradle.initialization.layout.BuildLayoutFactory;
 import org.gradle.internal.agents.AgentStatus;
 import org.gradle.internal.event.ListenerManager;
-import org.gradle.internal.jvm.inspection.JvmMetadataDetector;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.logging.events.OutputEventListener;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.service.scopes.GlobalScopeServices;
+import org.gradle.jvm.toolchain.internal.JavaToolchainQueryService;
 import org.gradle.launcher.cli.converter.BuildLayoutConverter;
 import org.gradle.launcher.daemon.client.DaemonClientFactory;
 import org.gradle.launcher.daemon.client.DaemonClientGlobalServices;
 import org.gradle.launcher.daemon.client.DaemonStopClient;
 import org.gradle.launcher.daemon.configuration.DaemonConfigurationServices;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
-import org.gradle.launcher.daemon.jvm.DaemonJavaInstallationRegistryFactory;
-import org.gradle.launcher.daemon.jvm.DaemonJavaToolchainQueryService;
+import org.gradle.launcher.daemon.jvm.JavaInstallationRegistryFactory;
 import org.gradle.launcher.exec.BuildExecuter;
 import org.gradle.tooling.internal.adapter.ProtocolToModelAdapter;
 import org.gradle.tooling.internal.provider.serialization.ClassLoaderCache;
@@ -66,13 +65,13 @@ public class ConnectionScopeServices {
 
     ProviderConnection createProviderConnection(BuildExecuter buildActionExecuter,
                                                 DaemonClientFactory daemonClientFactory,
-                                                DaemonJavaInstallationRegistryFactory daemonJavaInstallationRegistryFactory,
                                                 BuildLayoutFactory buildLayoutFactory,
                                                 ServiceRegistry serviceRegistry,
                                                 JvmVersionDetector jvmVersionDetector,
-                                                JvmMetadataDetector jvmMetadataDetector,
                                                 FileCollectionFactory fileCollectionFactory,
                                                 PropertyFactory propertyFactory,
+                                                JavaInstallationRegistryFactory javaInstallationRegistryFactory,
+                                                JavaToolchainQueryService javaToolchainQueryService,
                                                 // This is here to trigger creation of the ShutdownCoordinator. Could do this in a nicer way
                                                 ShutdownCoordinator shutdownCoordinator) {
         ClassLoaderCache classLoaderCache = new ClassLoaderCache();
@@ -80,8 +79,8 @@ public class ConnectionScopeServices {
                 serviceRegistry,
                 buildLayoutFactory,
                 daemonClientFactory,
-                // TODO review this
-                new DaemonJavaToolchainQueryService(daemonJavaInstallationRegistryFactory, jvmMetadataDetector, null),
+                javaInstallationRegistryFactory,
+                javaToolchainQueryService,
                 buildActionExecuter,
                 new PayloadSerializer(
                         new WellKnownClassLoaderRegistry(

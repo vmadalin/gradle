@@ -36,11 +36,16 @@ import org.gradle.jvm.toolchain.internal.AutoInstalledInstallationSupplier;
 import org.gradle.jvm.toolchain.internal.DefaultJavaToolchainResolverRegistry;
 import org.gradle.jvm.toolchain.internal.DefaultJavaToolchainService;
 import org.gradle.jvm.toolchain.internal.DefaultJvmToolchainManagement;
+import org.gradle.jvm.toolchain.internal.DefaultToolchainExternalResourceFactory;
 import org.gradle.jvm.toolchain.internal.InstallationSupplier;
 import org.gradle.jvm.toolchain.internal.JavaToolchainQueryService;
 import org.gradle.jvm.toolchain.internal.install.DefaultJavaToolchainProvisioningService;
+import org.gradle.jvm.toolchain.internal.install.JavaToolchainHttpRedirectVerifierFactory;
 import org.gradle.jvm.toolchain.internal.install.JdkCacheDirectory;
+import org.gradle.jvm.toolchain.internal.install.JdkCacheDirectoryInstaller;
+import org.gradle.jvm.toolchain.internal.install.JdkFileOperations;
 import org.gradle.jvm.toolchain.internal.install.SecureFileDownloader;
+import org.gradle.jvm.toolchain.internal.install.SimpleJdkFileOperations;
 import org.gradle.platform.internal.DefaultBuildPlatform;
 
 import java.util.List;
@@ -65,8 +70,16 @@ public class ToolchainsJvmServices extends AbstractPluginServiceRegistry {
             return objectFactory.newInstance(DefaultJvmToolchainManagement.class, registry);
         }
 
-        protected JdkCacheDirectory createJdkCacheDirectory(ObjectFactory objectFactory, GradleUserHomeDirProvider homeDirProvider, FileOperations operations, FileLockManager lockManager, JvmMetadataDetector detector) {
-            return objectFactory.newInstance(JdkCacheDirectory.class, homeDirProvider, operations, lockManager, detector);
+        protected JdkCacheDirectory createJdkCacheDirectory(ObjectFactory objectFactory, GradleUserHomeDirProvider homeDirProvider, FileLockManager lockManager, JdkCacheDirectoryInstaller installer) {
+            return objectFactory.newInstance(JdkCacheDirectory.class, homeDirProvider, lockManager, installer);
+        }
+
+        protected JdkCacheDirectoryInstaller createJdkCacheDirectoryInstaller(ObjectFactory objectFactory, JvmMetadataDetector detector, JdkFileOperations operations) {
+            return objectFactory.newInstance(JdkCacheDirectoryInstaller.class, detector, operations);
+        }
+
+        protected JdkFileOperations createJdkFileOperations(ObjectFactory objectFactory, FileOperations fileOperations) {
+            return objectFactory.newInstance(SimpleJdkFileOperations.class, fileOperations);
         }
 
         protected JavaInstallationRegistry createJavaInstallationRegistry(ObjectFactory objectFactory, List<InstallationSupplier> suppliers, BuildOperationExecutor executor, OperatingSystem os) {
@@ -85,7 +98,9 @@ public class ToolchainsJvmServices extends AbstractPluginServiceRegistry {
     public void registerProjectServices(ServiceRegistration registration) {
         registration.add(DefaultJavaToolchainService.class);
         registration.add(DefaultJavaToolchainProvisioningService.class);
+        registration.add(DefaultToolchainExternalResourceFactory.class);
         registration.add(SecureFileDownloader.class);
         registration.add(JavaToolchainQueryService.class);
+        registration.add(JavaToolchainHttpRedirectVerifierFactory.class);
     }
 }

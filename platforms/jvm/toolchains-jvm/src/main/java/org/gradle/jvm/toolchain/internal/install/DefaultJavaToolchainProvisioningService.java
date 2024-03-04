@@ -16,20 +16,16 @@
 
 package org.gradle.jvm.toolchain.internal.install;
 
-import org.gradle.api.GradleException;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.authentication.Authentication;
 import org.gradle.cache.FileLock;
 import org.gradle.internal.deprecation.Documentation;
-import org.gradle.internal.exceptions.Contextual;
 import org.gradle.internal.operations.BuildOperationContext;
 import org.gradle.internal.operations.BuildOperationDescriptor;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.operations.CallableBuildOperation;
 import org.gradle.internal.resource.ExternalResource;
-import org.gradle.internal.resource.ResourceExceptions;
-import org.gradle.internal.resource.metadata.ExternalResourceMetaData;
 import org.gradle.jvm.toolchain.JavaToolchainDownload;
 import org.gradle.jvm.toolchain.JavaToolchainResolverRegistry;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
@@ -39,7 +35,6 @@ import org.gradle.jvm.toolchain.internal.RealizedJavaToolchainRepository;
 import org.gradle.jvm.toolchain.internal.ToolchainDownloadFailedException;
 import org.gradle.platform.BuildPlatform;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.io.File;
 import java.net.URI;
@@ -51,15 +46,6 @@ import java.util.concurrent.Callable;
 import static org.gradle.jvm.toolchain.internal.AutoInstalledInstallationSupplier.AUTO_DOWNLOAD;
 
 public class DefaultJavaToolchainProvisioningService implements JavaToolchainProvisioningService {
-
-    @Contextual
-    private static class MissingToolchainException extends GradleException {
-
-        public MissingToolchainException(JavaToolchainSpec spec, URI uri, @Nullable Throwable cause) {
-            super("Unable to download toolchain matching the requirements (" + spec.getDisplayName() + ") from '" + uri + "'.", cause);
-        }
-
-    }
 
     private static final Object PROVISIONING_PROCESS_LOCK = new Object();
 
@@ -146,18 +132,6 @@ public class DefaultJavaToolchainProvisioningService implements JavaToolchainPro
                 throw new MissingToolchainException(spec, uri, e);
             }
         }
-    }
-
-    private String getFileName(URI uri, ExternalResource resource) {
-        ExternalResourceMetaData metaData = resource.getMetaData();
-        if (metaData == null) {
-            throw ResourceExceptions.getMissing(uri);
-        }
-        String fileName = metaData.getFilename();
-        if (fileName == null) {
-            throw new GradleException("Can't determine filename for resource located at: " + uri);
-        }
-        return fileName;
     }
 
     private <T> T wrapInOperation(String displayName, Callable<T> provisioningStep) {

@@ -37,12 +37,14 @@ import org.gradle.internal.build.event.BuildEventSubscriptions;
 import org.gradle.internal.buildconfiguration.tasks.UpdateDaemonJvmTask;
 import org.gradle.internal.invocation.BuildAction;
 import org.gradle.internal.jvm.Jvm;
+import org.gradle.internal.jvm.inspection.JavaInstallationRegistry;
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.logging.LoggingManagerInternal;
 import org.gradle.internal.logging.events.OutputEventListener;
 import org.gradle.internal.logging.services.LoggingServiceRegistry;
 import org.gradle.internal.service.ServiceRegistry;
+import org.gradle.jvm.toolchain.internal.JavaToolchainQueryService;
 import org.gradle.launcher.cli.converter.BuildLayoutConverter;
 import org.gradle.launcher.cli.converter.InitialPropertiesConverter;
 import org.gradle.launcher.cli.converter.LayoutToPropertiesConverter;
@@ -56,7 +58,7 @@ import org.gradle.launcher.daemon.configuration.DaemonBuildOptions;
 import org.gradle.launcher.daemon.configuration.DaemonJvmToolchainCriteriaOptions;
 import org.gradle.launcher.daemon.configuration.DaemonJvmToolchainSpec;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
-import org.gradle.launcher.daemon.jvm.DaemonJavaToolchainQueryService;
+import org.gradle.launcher.daemon.jvm.JavaInstallationRegistryFactory;
 import org.gradle.launcher.exec.BuildActionExecuter;
 import org.gradle.launcher.exec.BuildActionParameters;
 import org.gradle.launcher.exec.BuildActionResult;
@@ -107,7 +109,8 @@ public class ProviderConnection {
     private final PayloadSerializer payloadSerializer;
     private final BuildLayoutFactory buildLayoutFactory;
     private final DaemonClientFactory daemonClientFactory;
-    private final DaemonJavaToolchainQueryService daemonJavaToolchainQueryService;
+    private final JavaInstallationRegistryFactory javaInstallationRegistryFactory;
+    private final JavaToolchainQueryService javaToolchainQueryService;
     private final BuildActionExecuter<BuildActionParameters, BuildRequestContext> embeddedExecutor;
     private final ServiceRegistry sharedServices;
     private final JvmVersionDetector jvmVersionDetector;
@@ -116,12 +119,13 @@ public class ProviderConnection {
     private GradleVersion consumerVersion;
 
     public ProviderConnection(
-        ServiceRegistry sharedServices, BuildLayoutFactory buildLayoutFactory, DaemonClientFactory daemonClientFactory, DaemonJavaToolchainQueryService daemonJavaToolchainQueryService,
+        ServiceRegistry sharedServices, BuildLayoutFactory buildLayoutFactory, DaemonClientFactory daemonClientFactory, JavaInstallationRegistryFactory javaInstallationRegistryFactory, JavaToolchainQueryService javaToolchainQueryService,
         BuildActionExecuter<BuildActionParameters, BuildRequestContext> embeddedExecutor, PayloadSerializer payloadSerializer, JvmVersionDetector jvmVersionDetector, FileCollectionFactory fileCollectionFactory, PropertyFactory propertyFactory
     ) {
         this.buildLayoutFactory = buildLayoutFactory;
         this.daemonClientFactory = daemonClientFactory;
-        this.daemonJavaToolchainQueryService = daemonJavaToolchainQueryService;
+        this.javaInstallationRegistryFactory = javaInstallationRegistryFactory;
+        this.javaToolchainQueryService = javaToolchainQueryService;
         this.embeddedExecutor = embeddedExecutor;
         this.payloadSerializer = payloadSerializer;
         this.sharedServices = sharedServices;
@@ -357,7 +361,8 @@ public class ProviderConnection {
             DaemonJvmToolchainSpec jvmToolchainCriteria = new DaemonJvmToolchainSpec(propertyFactory);
             jvmToolchainCriteria = new DaemonJvmToolchainCriteriaOptions().propertiesConverter().convert(properties.getBuildProperties(), jvmToolchainCriteria);
             if (jvmToolchainCriteria.getLanguageVersion().isPresent()) {
-                JvmInstallationMetadata installation = daemonJavaToolchainQueryService.findMatchingToolchain(jvmToolchainCriteria, startParameters);
+                JavaInstallationRegistry registry = javaInstallationRegistryFactory.getRegistry(startParameters);
+                JvmInstallationMetadata installation = javaToolchainQueryService.findMatchingToolchain(jvmToolchainCriteria, registry).get().getMetadata();
                 javaHome = installation.getJavaHome().toFile();
             }
         } catch (Exception exception) {

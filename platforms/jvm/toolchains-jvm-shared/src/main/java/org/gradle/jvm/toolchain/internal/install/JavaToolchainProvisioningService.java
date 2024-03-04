@@ -19,6 +19,7 @@ package org.gradle.jvm.toolchain.internal.install;
 import org.gradle.api.GradleException;
 import org.gradle.internal.exceptions.Contextual;
 import org.gradle.internal.resource.ExternalResource;
+import org.gradle.internal.resource.LocalBinaryResource;
 import org.gradle.internal.resource.ResourceExceptions;
 import org.gradle.internal.resource.metadata.ExternalResourceMetaData;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
@@ -50,6 +51,12 @@ public interface JavaToolchainProvisioningService {
     }
 
     default String getFileName(URI uri, ExternalResource resource) {
+        if (resource instanceof LocalBinaryResource) {
+            String fileName = ((LocalBinaryResource) resource).getBaseName();
+            if (fileName != null) {
+                return fileName;
+            }
+        }
         ExternalResourceMetaData metaData = resource.getMetaData();
         if (metaData == null) {
             throw ResourceExceptions.getMissing(uri);

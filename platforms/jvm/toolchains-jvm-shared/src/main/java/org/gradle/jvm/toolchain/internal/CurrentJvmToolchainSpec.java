@@ -16,6 +16,7 @@
 
 package org.gradle.jvm.toolchain.internal;
 
+import org.gradle.api.internal.provider.PropertyFactory;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.internal.jvm.Jvm;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
@@ -24,8 +25,17 @@ import javax.inject.Inject;
 
 public class CurrentJvmToolchainSpec extends DefaultToolchainSpec {
 
+    // TODO consider removing the ObjectFactory
     @Inject
     public CurrentJvmToolchainSpec(ObjectFactory factory) {
+        super(factory);
+        getLanguageVersion().set(JavaLanguageVersion.of(Jvm.current().getJavaVersion().getMajorVersion()));
+
+        // disallow changing property values
+        finalizeProperties();
+    }
+
+    public CurrentJvmToolchainSpec(PropertyFactory factory) {
         super(factory);
         getLanguageVersion().set(JavaLanguageVersion.of(Jvm.current().getJavaVersion().getMajorVersion()));
 

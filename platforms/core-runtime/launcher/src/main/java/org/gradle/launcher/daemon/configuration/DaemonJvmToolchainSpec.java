@@ -18,13 +18,18 @@ package org.gradle.launcher.daemon.configuration;
 
 import org.gradle.api.internal.provider.PropertyFactory;
 import org.gradle.api.provider.Property;
+import org.gradle.internal.deprecation.DeprecationLogger;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.jvm.toolchain.JvmImplementation;
 import org.gradle.jvm.toolchain.JvmVendorSpec;
 import org.gradle.jvm.toolchain.internal.DefaultJvmVendorSpec;
+import org.gradle.jvm.toolchain.internal.JavaToolchainSpecInternal;
 
-public class DaemonJvmToolchainSpec implements JavaToolchainSpec {
+import java.util.Objects;
+
+// TODO this class was removed in favour of DefaultToolchainSpec keeping it for now but making it to implement JavaToolchainSpecInternal
+public class DaemonJvmToolchainSpec implements JavaToolchainSpecInternal, JavaToolchainSpec {
 
     private final Property<JavaLanguageVersion> version;
     private final Property<JvmVendorSpec> vendor;
@@ -49,6 +54,52 @@ public class DaemonJvmToolchainSpec implements JavaToolchainSpec {
     @Override
     public Property<JvmImplementation> getImplementation() {
         return implementation;
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "test";
+    }
+
+    @Override
+    public Key toKey() {
+        return new JavaToolchainSpecInternal.Key() {
+            @Override
+            public String toString() {
+                return "Test";
+            }
+        };
+    }
+
+    @Override
+    public boolean isConfigured() {
+        return version.isPresent();
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public boolean isValid() {
+        if (vendor.getOrNull() == JvmVendorSpec.IBM_SEMERU) {
+            // https://github.com/gradle/gradle/issues/23155
+            // This should make the spec invalid when the enum gets removed
+            DeprecationLogger.deprecateBehaviour("Requesting JVM vendor IBM_SEMERU.")
+                .willBeRemovedInGradle9()
+                .withUpgradeGuideSection(8, "ibm_semeru_should_not_be_used")
+                .nagUser();
+        }
+        return version.isPresent() || isSecondaryPropertiesUnchanged();
+    }
+
+    private boolean isSecondaryPropertiesUnchanged() {
+        return Objects.equals(DefaultJvmVendorSpec.any(), vendor.getOrNull()) &&
+            Objects.equals(JvmImplementation.VENDOR_SPECIFIC, implementation.getOrNull());
+    }
+
+    @Override
+    public void finalizeProperties() {
+        getLanguageVersion().finalizeValue();
+        getVendor().finalizeValue();
+        getImplementation().finalizeValue();
     }
 
     @Override

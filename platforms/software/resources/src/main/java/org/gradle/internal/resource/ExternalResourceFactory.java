@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package org.gradle.launcher.daemon
+package org.gradle.internal.resource;
 
-import org.gradle.integtests.fixtures.daemon.AbstractDaemonToolchainIntegrationTest
-import org.gradle.integtests.fixtures.executer.TaskExecuter
+import org.gradle.authentication.Authentication;
 
-class DaemonToolchainIntegrationTest extends AbstractDaemonToolchainIntegrationTest {
+import java.net.URI;
+import java.util.Collection;
 
-    @Override
-    TaskExecuter createTaskExecuter() {
-        return new CommandLineTaskExecuter(executer)
-    }
+public interface ExternalResourceFactory {
+
+    ExternalResourceRepository createExternalResource(URI source, Collection<Authentication> authentications);
 }

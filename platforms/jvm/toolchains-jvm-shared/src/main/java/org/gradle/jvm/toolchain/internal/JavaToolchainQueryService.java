@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import com.google.common.annotations.VisibleForTesting;
 import org.gradle.api.GradleException;
 import org.gradle.api.internal.file.FileFactory;
 import org.gradle.api.internal.provider.DefaultProvider;
+import org.gradle.api.internal.provider.PropertyFactory;
 import org.gradle.api.internal.provider.ProviderInternal;
-import org.gradle.api.model.ObjectFactory;
 import org.gradle.internal.deprecation.DeprecationLogger;
 import org.gradle.internal.deprecation.Documentation;
 import org.gradle.internal.deprecation.DocumentedFailure;
@@ -30,10 +30,12 @@ import org.gradle.internal.jvm.inspection.JavaInstallationRegistry;
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadataComparator;
 import org.gradle.internal.jvm.inspection.JvmMetadataDetector;
+import org.gradle.internal.service.scopes.Scope;
 import org.gradle.internal.service.scopes.Scopes;
 import org.gradle.internal.service.scopes.ServiceScope;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.jvm.toolchain.internal.install.JavaToolchainProvisioningService;
+import org.gradle.jvm.toolchain.internal.install.NoToolchainAvailableException;
 import org.gradle.platform.BuildPlatform;
 
 import javax.inject.Inject;
@@ -45,7 +47,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 
-@ServiceScope(Scopes.Project.class) //TODO #24353: should be much higher scoped, as many other toolchain related services, but is bogged down by the scope of services it depends on
+// TODO this should be both scopes since there are differences in implementation detail between Daemon and Task toolchain
+@ServiceScope({Scope.Global.class, Scopes.Project.class})
 public class JavaToolchainQueryService {
 
     // A key that matches only the fallback toolchain
@@ -56,7 +59,6 @@ public class JavaToolchainQueryService {
         }
     };
 
-    private final JavaInstallationRegistry registry;
     private final FileFactory fileFactory;
     private final JvmMetadataDetector detector;
     private final JavaToolchainProvisioningService installService;
@@ -68,42 +70,39 @@ public class JavaToolchainQueryService {
 
     @Inject
     public JavaToolchainQueryService(
-        JavaInstallationRegistry registry,
         JvmMetadataDetector detector,
         FileFactory fileFactory,
         JavaToolchainProvisioningService provisioningService,
-        ObjectFactory objectFactory,
+        PropertyFactory propertyFactory,
         BuildPlatform buildPlatform
     ) {
-        this(registry, detector, fileFactory, provisioningService, objectFactory, Jvm.current().getJavaHome(), buildPlatform);
+        this(detector, fileFactory, provisioningService, propertyFactory, buildPlatform, Jvm.current().getJavaHome());
     }
 
     @VisibleForTesting
     JavaToolchainQueryService(
-        JavaInstallationRegistry registry,
         JvmMetadataDetector detector,
         FileFactory fileFactory,
         JavaToolchainProvisioningService provisioningService,
-        ObjectFactory objectFactory,
-        File currentJavaHome,
-        BuildPlatform buildPlatform
+        PropertyFactory propertyFactory,
+        BuildPlatform buildPlatform,
+        File currentJavaHome
     ) {
-        this.registry = registry;
         this.detector = detector;
         this.fileFactory = fileFactory;
         this.installService = provisioningService;
         this.matchingToolchains = new ConcurrentHashMap<>();
-        this.fallbackToolchainSpec = objectFactory.newInstance(CurrentJvmToolchainSpec.class);
-        this.currentJavaHome = currentJavaHome;
+        this.fallbackToolchainSpec = new CurrentJvmToolchainSpec(propertyFactory);
         this.buildPlatform = buildPlatform;
+        this.currentJavaHome = currentJavaHome;
     }
 
-    public ProviderInternal<JavaToolchain> findMatchingToolchain(JavaToolchainSpec filter) {
+    public ProviderInternal<JavaToolchain> findMatchingToolchain(JavaToolchainSpec filter, JavaInstallationRegistry registry) {
         JavaToolchainSpecInternal filterInternal = (JavaToolchainSpecInternal) Objects.requireNonNull(filter);
-        return new DefaultProvider<>(() -> resolveToolchain(filterInternal));
+        return new DefaultProvider<>(() -> resolveToolchain(filterInternal, registry));
     }
 
-    private JavaToolchain resolveToolchain(JavaToolchainSpecInternal requestedSpec) throws Exception {
+    private JavaToolchain resolveToolchain(JavaToolchainSpecInternal requestedSpec, JavaInstallationRegistry registry) throws Exception {
         requestedSpec.finalizeProperties();
 
         if (!requestedSpec.isValid()) {
@@ -121,7 +120,7 @@ public class JavaToolchainQueryService {
 
         Object resolutionResult = matchingToolchains.computeIfAbsent(actualKey, key -> {
             try {
-                return query(actualSpec, useFallback);
+                return query(actualSpec, registry, useFallback);
             } catch (Exception e) {
                 return e;
             }
@@ -134,7 +133,7 @@ public class JavaToolchainQueryService {
         }
     }
 
-    private JavaToolchain query(JavaToolchainSpec spec, boolean isFallback) {
+    private JavaToolchain query(JavaToolchainSpec spec, JavaInstallationRegistry registry, boolean isFallback) {
         if (spec instanceof CurrentJvmToolchainSpec) {
             return asToolchainOrThrow(new InstallationLocation(currentJavaHome, "current JVM"), spec, isFallback);
         }
@@ -143,10 +142,10 @@ public class JavaToolchainQueryService {
             return asToolchainOrThrow(new InstallationLocation(((SpecificInstallationToolchainSpec) spec).getJavaHome(), "specific installation"), spec, false);
         }
 
-        return findInstalledToolchain(spec).orElseGet(() -> downloadToolchain(spec));
+        return findInstalledToolchain(spec, registry).orElseGet(() -> downloadToolchain(spec, registry));
     }
 
-    private Optional<JavaToolchain> findInstalledToolchain(JavaToolchainSpec spec) {
+    private Optional<JavaToolchain> findInstalledToolchain(JavaToolchainSpec spec, JavaInstallationRegistry registry) {
         Predicate<JvmInstallationMetadata> matcher = new JvmInstallationMetadataMatcher(spec);
 
         return registry.toolchains().stream()
@@ -172,7 +171,7 @@ public class JavaToolchainQueryService {
         }
     }
 
-    private JavaToolchain downloadToolchain(JavaToolchainSpec spec) {
+    private JavaToolchain downloadToolchain(JavaToolchainSpec spec, JavaInstallationRegistry registry) {
         File installation;
         try {
             installation = installService.tryInstall(spec);

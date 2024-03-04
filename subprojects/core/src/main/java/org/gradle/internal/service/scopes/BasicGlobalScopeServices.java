@@ -67,6 +67,7 @@ import org.gradle.internal.remote.services.MessagingServices;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.scopes.Scope.Global;
 import org.gradle.internal.time.Clock;
+import org.gradle.platform.internal.DefaultBuildPlatform;
 import org.gradle.process.internal.DefaultExecActionFactory;
 import org.gradle.process.internal.ExecFactory;
 import org.gradle.process.internal.ExecHandleFactory;
@@ -83,6 +84,7 @@ import static org.gradle.cache.internal.scopes.DefaultCacheScopeMapping.GLOBAL_C
 public class BasicGlobalScopeServices {
     void configure(ServiceRegistration serviceRegistration) {
         serviceRegistration.add(DefaultFileLookup.class);
+        serviceRegistration.add(DefaultBuildPlatform.class);
         serviceRegistration.addProvider(new MessagingServices());
     }
 

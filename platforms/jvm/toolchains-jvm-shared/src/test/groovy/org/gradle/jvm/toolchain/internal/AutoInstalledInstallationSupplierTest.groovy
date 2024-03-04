@@ -16,13 +16,12 @@
 
 package org.gradle.jvm.toolchain.internal
 
-import org.gradle.api.internal.file.FileOperations
 import org.gradle.api.internal.provider.Providers
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.cache.FileLockManager
 import org.gradle.initialization.GradleUserHomeDirProvider
-import org.gradle.internal.jvm.inspection.JvmMetadataDetector
 import org.gradle.jvm.toolchain.internal.install.JdkCacheDirectory
+import org.gradle.jvm.toolchain.internal.install.JdkCacheDirectoryInstaller
 import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider
 import org.junit.Rule
 import spock.lang.Specification
@@ -133,7 +132,7 @@ class AutoInstalledInstallationSupplierTest extends Specification {
     }
 
     private JdkCacheDirectory newCacheDirProvider(javaHomes) {
-        new JdkCacheDirectory(Mock(GradleUserHomeDirProvider), Mock(FileOperations), Mock(FileLockManager), Mock(JvmMetadataDetector)) {
+        new JdkCacheDirectory(Mock(GradleUserHomeDirProvider), Mock(FileLockManager), Mock(JdkCacheDirectoryInstaller)) {
             @Override
             Set<File> listJavaHomes() {
                 return javaHomes
