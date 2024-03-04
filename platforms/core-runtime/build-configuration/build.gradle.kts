@@ -7,11 +7,13 @@ description = "The Build configuration properties modifiers and helpers."
 dependencies {
     api(libs.jsr305)
     api(libs.inject)
-    
+
     api(projects.core)
     api(projects.coreApi)
     api(projects.toolchainsJvmShared)
     api(projects.stdlibJavaExtensions)
+    api(projects.native)
+    api(projects.serviceProvider)
 
     implementation(projects.baseServices)
     implementation(projects.logging)
@@ -19,6 +21,7 @@ dependencies {
     implementation(projects.jvmServices)
 
     testImplementation(testFixtures(projects.core))
+    testImplementation(testFixtures(projects.toolchainsJvmShared))
 
     testFixturesImplementation(projects.coreApi)
     testFixturesImplementation(projects.internalIntegTesting)

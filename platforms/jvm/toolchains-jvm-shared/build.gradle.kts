@@ -31,6 +31,8 @@ dependencies {
     api(projects.jvmServices)
     api(projects.persistentCache)
     api(projects.core)
+    api(projects.native)
+    api(projects.resources)
 
     implementation(projects.functional)
 
