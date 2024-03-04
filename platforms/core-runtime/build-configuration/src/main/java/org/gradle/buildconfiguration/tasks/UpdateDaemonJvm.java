@@ -48,14 +48,17 @@ import java.util.stream.Collectors;
 @DisableCachingByDefault(because = "Not worth caching")
 @Incubating
 public abstract class UpdateDaemonJvm extends DefaultTask {
+
+    private final UpdateDaemonJvmModifier updateDaemonJvmModifier;
+
     /**
      * Constructor.
      *
      * @since 8.8
      */
     @Inject
-    public UpdateDaemonJvm() {
-
+    public UpdateDaemonJvm(UpdateDaemonJvmModifier updateDaemonJvmModifier) {
+        this.updateDaemonJvmModifier = updateDaemonJvmModifier;
     }
 
     @TaskAction
@@ -68,7 +71,7 @@ public abstract class UpdateDaemonJvm extends DefaultTask {
         } else {
             jvmVendor = null; // any vendor is acceptable
         }
-        UpdateDaemonJvmModifier.updateJvmCriteria(
+        updateDaemonJvmModifier.updateJvmCriteria(
             getPropertiesFile().get().getAsFile(),
             getJvmVersion().get(),
             jvmVendor,

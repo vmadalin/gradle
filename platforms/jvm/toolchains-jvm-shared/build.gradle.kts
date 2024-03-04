@@ -35,6 +35,8 @@ dependencies {
     implementation(projects.functional)
 
     implementation(projects.logging)
+    implementation(projects.platformJvm)
+
     implementation(libs.guava)
     implementation(libs.slf4jApi)
     implementation(libs.commonsIo)

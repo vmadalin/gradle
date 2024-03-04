@@ -23,9 +23,10 @@ import org.gradle.platform.BuildPlatform;
 import org.gradle.platform.Architecture;
 import org.gradle.platform.OperatingSystem;
 
+import java.util.Objects;
 import javax.inject.Inject;
 
-public class DefaultBuildPlatform implements BuildPlatform {
+public abstract class DefaultBuildPlatform implements BuildPlatform {
 
     private Architecture architecture;
 
@@ -52,6 +53,23 @@ public class DefaultBuildPlatform implements BuildPlatform {
         return operatingSystem.get();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        DefaultBuildPlatform that = (DefaultBuildPlatform) o;
+        return Objects.equals(getArchitecture(), that.getArchitecture()) && Objects.equals(getOperatingSystem(), that.getOperatingSystem());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getArchitecture(), getOperatingSystem());
+    }
+
     public static OperatingSystem getOperatingSystem(org.gradle.internal.os.OperatingSystem operatingSystem) {
         if (org.gradle.internal.os.OperatingSystem.LINUX == operatingSystem) {
             return OperatingSystem.LINUX;
@@ -61,7 +79,7 @@ public class DefaultBuildPlatform implements BuildPlatform {
             return OperatingSystem.WINDOWS;
         } else if (org.gradle.internal.os.OperatingSystem.MAC_OS == operatingSystem) {
             return OperatingSystem.MAC_OS;
-        } else  if (org.gradle.internal.os.OperatingSystem.SOLARIS == operatingSystem) {
+        } else if (org.gradle.internal.os.OperatingSystem.SOLARIS == operatingSystem) {
             return OperatingSystem.SOLARIS;
         } else if (org.gradle.internal.os.OperatingSystem.FREE_BSD == operatingSystem) {
             return OperatingSystem.FREE_BSD;
