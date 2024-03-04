@@ -22,6 +22,7 @@ import org.gradle.internal.jvm.inspection.JvmToolchainMetadata
 import org.gradle.internal.logging.text.TestStyledTextOutput
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.api.tasks.diagnostics.internal.ToolchainReportRenderer
+import org.gradle.jvm.toolchain.JvmMetadataWithAddedCapabilities
 import spock.lang.Specification
 import spock.lang.TempDir
 

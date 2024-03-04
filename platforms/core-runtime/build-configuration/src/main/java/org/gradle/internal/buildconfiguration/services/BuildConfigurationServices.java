@@ -19,7 +19,7 @@ package org.gradle.internal.buildconfiguration.services;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.internal.buildconfiguration.resolvers.DefaultToolchainRepositoriesResolver;
 import org.gradle.internal.buildconfiguration.resolvers.ToolchainRepositoriesResolver;
-import org.gradle.internal.buildconfiguration.tasks.UpdateDaemonJvmModifier;
+import org.gradle.internal.buildconfiguration.tasks.DaemonJvmPropertiesModifier;
 import org.gradle.internal.service.Provides;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.ServiceRegistrationProvider;
@@ -30,8 +30,8 @@ public class BuildConfigurationServices extends AbstractGradleModuleServices {
 
     protected static class ProjectScopeServices implements ServiceRegistrationProvider {
         @Provides
-        UpdateDaemonJvmModifier createUpdateDaemonJvmModifier(ToolchainRepositoriesResolver toolchainRepositoriesResolver) {
-            return new UpdateDaemonJvmModifier(toolchainRepositoriesResolver);
+        DaemonJvmPropertiesModifier createDaemonJvmPropertiesModifier(ToolchainRepositoriesResolver toolchainRepositoriesResolver) {
+            return new DaemonJvmPropertiesModifier(toolchainRepositoriesResolver);
         }
 
         @Provides

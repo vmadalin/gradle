@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.gradle.jvm.toolchain.internal
+package org.gradle.jvm.toolchain
 
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Sets

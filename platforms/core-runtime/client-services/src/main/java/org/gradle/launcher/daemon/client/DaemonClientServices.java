@@ -22,8 +22,10 @@ import org.gradle.internal.nativeintegration.ProcessEnvironment;
 import org.gradle.internal.service.Provides;
 import org.gradle.launcher.daemon.context.DaemonCompatibilitySpec;
 import org.gradle.launcher.daemon.context.DaemonRequestContext;
+import org.gradle.tooling.internal.protocol.InternalBuildProgressListener;
 
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -31,8 +33,8 @@ import java.util.UUID;
  */
 public class DaemonClientServices extends DaemonClientServicesSupport {
 
-    public DaemonClientServices(InputStream buildStandardInput) {
-        super(buildStandardInput);
+    public DaemonClientServices(InputStream buildStandardInput, Optional<InternalBuildProgressListener> buildProgressListener) {
+        super(buildStandardInput, buildProgressListener);
     }
 
     @Provides

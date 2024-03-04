@@ -28,6 +28,7 @@ import org.gradle.launcher.daemon.context.DaemonContext;
 import org.gradle.launcher.daemon.context.DaemonRequestContext;
 
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -36,7 +37,7 @@ import java.util.UUID;
 public class SingleUseDaemonClientServices extends DaemonClientServicesSupport {
 
     public SingleUseDaemonClientServices(InputStream buildStandardInput) {
-        super(buildStandardInput);
+        super(buildStandardInput, Optional.empty());
     }
 
     @Provides
