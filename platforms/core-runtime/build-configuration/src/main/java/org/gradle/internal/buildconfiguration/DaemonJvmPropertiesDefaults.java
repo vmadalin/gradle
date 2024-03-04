@@ -17,6 +17,11 @@
 package org.gradle.internal.buildconfiguration;
 
 import org.gradle.api.JavaVersion;
+import org.gradle.platform.Architecture;
+import org.gradle.platform.OperatingSystem;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class DaemonJvmPropertiesDefaults {
     public static final String DAEMON_JVM_PROPERTIES_FILE = "gradle/gradle-daemon-jvm.properties";
@@ -24,6 +29,9 @@ public class DaemonJvmPropertiesDefaults {
     public static final String TOOLCHAIN_VERSION_PROPERTY = "toolchainVersion";
     public static final String TOOLCHAIN_VENDOR_PROPERTY = "toolchainVendor";
     public static final String TOOLCHAIN_IMPLEMENTATION_PROPERTY = "toolchainImplementation";
+    public static final String TOOLCHAIN_URL_PROPERTY_FORMAT = "toolchain%s%sUrl";
 
     public static final JavaVersion TOOLCHAIN_VERSION = JavaVersion.current();
+    public static final List<Architecture> TOOLCHAIN_SUPPORTED_ARCHITECTURES = Arrays.asList(Architecture.AARCH64, Architecture.X86_64);
+    public static final List<OperatingSystem> TOOLCHAIN_SUPPORTED_OPERATING_SYSTEM = Arrays.asList(OperatingSystem.values());
 }

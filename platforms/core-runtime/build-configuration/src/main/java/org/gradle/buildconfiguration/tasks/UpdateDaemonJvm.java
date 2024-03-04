@@ -50,6 +50,7 @@ import java.util.Arrays;
 public abstract class UpdateDaemonJvm extends DefaultTask {
 
     private final Property<JvmVendorSpec> jvmVendorSpec = getProject().getObjects().property(JvmVendorSpec.class);
+    private final UpdateDaemonJvmModifier updateDaemonJvmModifier;
 
     /**
      * Constructor.
@@ -57,22 +58,18 @@ public abstract class UpdateDaemonJvm extends DefaultTask {
      * @since 8.8
      */
     @Inject
-    public UpdateDaemonJvm() {
-
+    public UpdateDaemonJvm(UpdateDaemonJvmModifier updateDaemonJvmModifier) {
+        this.updateDaemonJvmModifier = updateDaemonJvmModifier;
     }
 
     @TaskAction
     void generate() {
         IncubationLogger.incubatingFeatureUsed("Daemon JVM criteria");
 
-        JvmVendor jvmVendor = null;
-        if (jvmVendorSpec.isPresent()) {
-            jvmVendor = JvmVendor.KnownJvmVendor.valueOf(jvmVendorSpec.get().toString()).asJvmVendor();
-        }
-        UpdateDaemonJvmModifier.updateJvmCriteria(
+        updateDaemonJvmModifier.updateJvmCriteria(
             getPropertiesFile().get().getAsFile(),
             getJvmVersion().get(),
-            jvmVendor,
+            jvmVendorSpec.getOrNull(),
             null
         );
     }

@@ -15,8 +15,10 @@ dependencies {
     api(project(":toolchains-jvm-shared"))
     api(project(":base-annotations"))
     implementation(project(":logging"))
+    implementation(project(":platform-jvm"))
 
     testImplementation(testFixtures(project(":core")))
+    testImplementation(testFixtures(project(":toolchains-jvm-shared")))
 
     testFixturesImplementation(project(":core-api"))
     testFixturesImplementation(project(":internal-integ-testing"))

@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 the original author or authors.
+ * Copyright 2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
-package org.gradle.jvm.toolchain.internal;
+package org.gradle.internal.buildconfiguration.resolvers;
 
 import org.gradle.api.GradleException;
+import org.gradle.internal.deprecation.Documentation;
 import org.gradle.internal.exceptions.ResolutionProvider;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-public class ToolchainDownloadFailedException extends GradleException implements ResolutionProvider {
+public class UnconfiguredToolchainRepositoriesResolver extends GradleException implements ResolutionProvider {
 
     private final List<String> resolutions;
 
-    public ToolchainDownloadFailedException(String message, String... resolutions) {
-        super(message);
-        this.resolutions = Arrays.asList(resolutions);
+    public UnconfiguredToolchainRepositoriesResolver() {
+        super("Toolchain download repositories have not been configured.");
+        resolutions = Collections.singletonList("Learn more about toolchain repositories at " + Documentation.userManual("toolchains", "sub:download_repositories").getUrl() + ".");
     }
 
     @Override

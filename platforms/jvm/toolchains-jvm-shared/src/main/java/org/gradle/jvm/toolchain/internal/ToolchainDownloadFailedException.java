@@ -14,10 +14,25 @@
  * limitations under the License.
  */
 
-/**
- * The Gradle build configuration tasks internals.
- */
-@NonNullApi
-package org.gradle.internal.buildconfiguration.tasks;
+package org.gradle.jvm.toolchain.internal;
 
-import org.gradle.api.NonNullApi;
+import org.gradle.api.GradleException;
+import org.gradle.internal.exceptions.ResolutionProvider;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class ToolchainDownloadFailedException extends GradleException implements ResolutionProvider {
+
+    private final List<String> resolutions;
+
+    public ToolchainDownloadFailedException(String message, String... resolutions) {
+        super(message);
+        this.resolutions = Arrays.asList(resolutions);
+    }
+
+    @Override
+    public List<String> getResolutions() {
+        return resolutions;
+    }
+}

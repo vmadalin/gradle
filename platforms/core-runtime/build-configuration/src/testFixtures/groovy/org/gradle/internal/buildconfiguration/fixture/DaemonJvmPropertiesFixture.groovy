@@ -20,6 +20,7 @@ import groovy.transform.SelfType
 import org.gradle.api.JavaVersion
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.AvailableJavaHomes
+import org.gradle.internal.Pair
 import org.gradle.internal.buildconfiguration.DaemonJvmPropertiesDefaults
 import org.gradle.internal.jvm.Jvm
 import org.gradle.test.fixtures.file.TestFile
@@ -47,6 +48,14 @@ trait DaemonJvmPropertiesFixture {
         assert properties.get(DaemonJvmPropertiesDefaults.TOOLCHAIN_VERSION_PROPERTY) == version.majorVersion
         assert properties.get(DaemonJvmPropertiesDefaults.TOOLCHAIN_VENDOR_PROPERTY) == vendor
         assert properties.get(DaemonJvmPropertiesDefaults.TOOLCHAIN_IMPLEMENTATION_PROPERTY) == implementation
+    }
+
+    void assertToolchainDownloadUrlsProperties(Map<List<String>, String> platformToolchainUrl) {
+        Map<String, String> properties = daemonJvmPropertiesFile.properties
+        platformToolchainUrl.forEach { platform, url ->
+            def toolchainUrlProperty = String.format(DaemonJvmPropertiesDefaults.TOOLCHAIN_URL_PROPERTY_FORMAT, platform[0], platform[1])
+            assert properties.get(toolchainUrlProperty) == url
+        }
     }
 
     void writeJvmCriteria(Jvm jvm) {
