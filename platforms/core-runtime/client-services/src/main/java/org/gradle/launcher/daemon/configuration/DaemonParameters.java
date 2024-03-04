@@ -17,32 +17,28 @@ package org.gradle.launcher.daemon.configuration;
 
 import com.google.common.collect.ImmutableList;
 import org.gradle.api.internal.file.FileCollectionFactory;
-import org.gradle.internal.buildconfiguration.DaemonJvmPropertiesDefaults;
 import org.gradle.internal.jvm.JpmsConfiguration;
-import org.gradle.internal.jvm.inspection.JvmVendor;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
+import org.gradle.internal.buildconfiguration.tasks.DaemonJvmPropertiesAccessor;
 import org.gradle.internal.nativeintegration.services.NativeServices.NativeServicesMode;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JvmImplementation;
 import org.gradle.jvm.toolchain.JvmVendorSpec;
-import org.gradle.jvm.toolchain.internal.DefaultJavaLanguageVersion;
-import org.gradle.jvm.toolchain.internal.DefaultJvmVendorSpec;
 import org.gradle.jvm.toolchain.internal.DefaultToolchainConfiguration;
 import org.gradle.jvm.toolchain.internal.ToolchainConfiguration;
 import org.gradle.launcher.configuration.BuildLayoutResult;
 import org.gradle.launcher.daemon.context.DaemonRequestContext;
 import org.gradle.launcher.daemon.toolchain.DaemonJvmCriteria;
+import org.gradle.launcher.daemon.toolchain.ToolchainDownloadUrlProvider;
 import org.gradle.util.internal.GUtil;
 
 import javax.annotation.Nullable;
 import java.io.File;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 public class DaemonParameters {
@@ -71,6 +67,7 @@ public class DaemonParameters {
     private boolean status;
     private DaemonPriority priority = DaemonPriority.NORMAL;
     private DaemonJvmCriteria requestedJvmCriteria = new DaemonJvmCriteria.LauncherJvm();
+    private ToolchainDownloadUrlProvider toolchainDownloadUrlProvider;
 
     public DaemonParameters(BuildLayoutResult layout, FileCollectionFactory fileCollectionFactory) {
         this(layout, fileCollectionFactory, Collections.<String, String>emptyMap());
@@ -141,35 +138,13 @@ public class DaemonParameters {
         this.requestedJvmCriteria = requestedJvmCriteria;
     }
 
-    public void setRequestedJvmCriteriaFromMap(@Nullable Map<String, String> buildProperties) {
-        String requestedVersion = buildProperties.get(DaemonJvmPropertiesDefaults.TOOLCHAIN_VERSION_PROPERTY);
+    public void setRequestedJvmCriteriaFromMap(@Nullable Map<String, String> daemonJvmProperties) {
+        DaemonJvmPropertiesAccessor daemonJvmAccessor = new DaemonJvmPropertiesAccessor(daemonJvmProperties);
+        JavaLanguageVersion requestedVersion = daemonJvmAccessor.getVersion();
         if (requestedVersion != null) {
-            JavaLanguageVersion javaVersion;
-            try {
-                javaVersion = DefaultJavaLanguageVersion.fromFullVersion(requestedVersion);
-            } catch (Exception e) {
-                // TODO: This should be pushed somewhere else so we consistently report this message in the right context.
-                throw new IllegalArgumentException(String.format("Value '%s' given for %s is an invalid Java version", requestedVersion, DaemonJvmPropertiesDefaults.TOOLCHAIN_VERSION_PROPERTY));
-            }
-
-            final JvmVendorSpec javaVendor;
-            String requestedVendor = buildProperties.get(DaemonJvmPropertiesDefaults.TOOLCHAIN_VENDOR_PROPERTY);
-
-            if (requestedVendor != null) {
-                Optional<JvmVendor.KnownJvmVendor> knownVendor =
-                    Arrays.stream(JvmVendor.KnownJvmVendor.values()).filter(e -> e.name().equals(requestedVendor)).findFirst();
-
-                if (knownVendor.isPresent() && knownVendor.get()!=JvmVendor.KnownJvmVendor.UNKNOWN) {
-                    javaVendor = DefaultJvmVendorSpec.of(knownVendor.get());
-                } else {
-                    javaVendor = DefaultJvmVendorSpec.matching(requestedVendor);
-                }
-            } else {
-                // match any vendor
-                javaVendor = DefaultJvmVendorSpec.any();
-            }
-
-            this.requestedJvmCriteria = new DaemonJvmCriteria.Spec(javaVersion, javaVendor, JvmImplementation.VENDOR_SPECIFIC);
+            JvmVendorSpec requestedJavaVendor = daemonJvmAccessor.getVendor();
+            this.requestedJvmCriteria = new DaemonJvmCriteria.Spec(requestedVersion, requestedJavaVendor, JvmImplementation.VENDOR_SPECIFIC);
+            this.toolchainDownloadUrlProvider = new ToolchainDownloadUrlProvider(daemonJvmAccessor.getToolchainDownloadUrls());
         }
     }
 
@@ -301,6 +276,10 @@ public class DaemonParameters {
 
     public ToolchainConfiguration getToolchainConfiguration() {
         return toolchainConfiguration;
+    }
+
+    public ToolchainDownloadUrlProvider getToolchainDownloadUrlProvider() {
+        return toolchainDownloadUrlProvider;
     }
 
     public DaemonPriority getPriority() {

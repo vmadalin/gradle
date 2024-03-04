@@ -19,6 +19,8 @@ import org.gradle.api.GradleException;
 import org.gradle.api.UncheckedIOException;
 import org.gradle.api.internal.classpath.DefaultModuleRegistry;
 import org.gradle.api.internal.classpath.ModuleRegistry;
+import org.gradle.api.internal.provider.PropertyFactory;
+import org.gradle.api.internal.provider.ProviderInternal;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.internal.classpath.ClassPath;
@@ -29,21 +31,22 @@ import org.gradle.internal.instrumentation.agent.AgentUtils;
 import org.gradle.internal.io.StreamByteBuffer;
 import org.gradle.internal.jvm.JavaInfo;
 import org.gradle.internal.jvm.Jvm;
-import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
 import org.gradle.internal.os.OperatingSystem;
 import org.gradle.internal.serialize.FlushableEncoder;
 import org.gradle.internal.serialize.kryo.KryoBackedEncoder;
 import org.gradle.internal.stream.EncodedStream;
 import org.gradle.internal.time.Time;
 import org.gradle.internal.time.Timer;
+import org.gradle.jvm.toolchain.internal.JavaToolchain;
+import org.gradle.jvm.toolchain.internal.JavaToolchainQueryService;
 import org.gradle.launcher.daemon.DaemonExecHandleBuilder;
 import org.gradle.launcher.daemon.bootstrap.DaemonOutputConsumer;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
 import org.gradle.launcher.daemon.configuration.DaemonPriority;
 import org.gradle.launcher.daemon.diagnostics.DaemonStartupInfo;
 import org.gradle.launcher.daemon.registry.DaemonDir;
-import org.gradle.launcher.daemon.toolchain.DaemonJavaToolchainQueryService;
 import org.gradle.launcher.daemon.toolchain.DaemonJvmCriteria;
+import org.gradle.launcher.daemon.toolchain.DaemonJvmToolchainSpec;
 import org.gradle.process.internal.DefaultExecActionFactory;
 import org.gradle.process.internal.ExecHandle;
 import org.gradle.process.internal.JvmOptions;
@@ -68,14 +71,16 @@ public class DefaultDaemonStarter implements DaemonStarter {
     private final DaemonParameters daemonParameters;
     private final DaemonGreeter daemonGreeter;
     private final JvmVersionValidator versionValidator;
-    private final DaemonJavaToolchainQueryService daemonJavaToolchainQueryService;
+    private final JavaToolchainQueryService javaToolchainQueryService;
+    private final PropertyFactory propertyFactory;
 
-    public DefaultDaemonStarter(DaemonDir daemonDir, DaemonParameters daemonParameters, DaemonGreeter daemonGreeter, JvmVersionValidator versionValidator, DaemonJavaToolchainQueryService daemonJavaToolchainQueryService) {
+    public DefaultDaemonStarter(DaemonDir daemonDir, DaemonParameters daemonParameters, DaemonGreeter daemonGreeter, JvmVersionValidator versionValidator, JavaToolchainQueryService javaToolchainQueryService, PropertyFactory propertyFactory) {
         this.daemonDir = daemonDir;
         this.daemonParameters = daemonParameters;
         this.daemonGreeter = daemonGreeter;
         this.versionValidator = versionValidator;
-        this.daemonJavaToolchainQueryService = daemonJavaToolchainQueryService;
+        this.javaToolchainQueryService = javaToolchainQueryService;
+        this.propertyFactory = propertyFactory;
     }
 
     @Override
@@ -87,8 +92,9 @@ public class DefaultDaemonStarter implements DaemonStarter {
         if (criteria instanceof DaemonJvmCriteria.Spec) {
             // Gradle daemon properties have been defined
             IncubationLogger.incubatingFeatureUsed("Daemon JVM discovery");
-            JvmInstallationMetadata jvmInstallationMetadata = daemonJavaToolchainQueryService.findMatchingToolchain((DaemonJvmCriteria.Spec) criteria);
-            resolvedJvm = Jvm.forHome(jvmInstallationMetadata.getJavaHome().toFile());
+            DaemonJvmToolchainSpec daemonJvmToolchainSpec = new DaemonJvmToolchainSpec(propertyFactory, (DaemonJvmCriteria.Spec) criteria);
+            ProviderInternal<JavaToolchain> jvmInstallationMetadata = javaToolchainQueryService.findMatchingToolchain(daemonJvmToolchainSpec);
+            resolvedJvm = Jvm.forHome(jvmInstallationMetadata.get().getInstallationPath().getAsFile());
         } else if (criteria instanceof DaemonJvmCriteria.JavaHome) {
             resolvedJvm = Jvm.forHome(((DaemonJvmCriteria.JavaHome) criteria).getJavaHome());
         } else if (criteria instanceof DaemonJvmCriteria.LauncherJvm) {
