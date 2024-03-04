@@ -24,16 +24,18 @@ import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
 import org.gradle.launcher.daemon.context.DaemonCompatibilitySpec;
 import org.gradle.launcher.daemon.context.DaemonRequestContext;
+import org.gradle.tooling.internal.protocol.InternalBuildProgressListener;
 
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Takes care of instantiating and wiring together the services required by the daemon client.
  */
 public class DaemonClientServices extends DaemonClientServicesSupport {
-    public DaemonClientServices(ServiceRegistry parent, DaemonParameters daemonParameters, DaemonRequestContext requestContext, InputStream buildStandardInput) {
-        super(parent, daemonParameters, requestContext, buildStandardInput);
+    public DaemonClientServices(ServiceRegistry parent, DaemonParameters daemonParameters, DaemonRequestContext requestContext, InputStream buildStandardInput, Optional<InternalBuildProgressListener> buildProgressListener) {
+        super(parent, daemonParameters, requestContext, buildStandardInput, buildProgressListener);
     }
     protected DaemonClient createDaemonClient(IdGenerator<UUID> idGenerator) {
         DaemonCompatibilitySpec matchingContextSpec = new DaemonCompatibilitySpec(get(DaemonRequestContext.class));

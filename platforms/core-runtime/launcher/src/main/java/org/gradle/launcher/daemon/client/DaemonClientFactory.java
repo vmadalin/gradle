@@ -25,10 +25,12 @@ import org.gradle.internal.service.ServiceLookup;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
 import org.gradle.launcher.daemon.context.DaemonRequestContext;
+import org.gradle.tooling.internal.protocol.InternalBuildProgressListener;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Collections;
+import java.util.Optional;
 
 public class DaemonClientFactory {
     private final ServiceRegistry sharedServices;
@@ -40,9 +42,9 @@ public class DaemonClientFactory {
     /**
      * Creates the services for a {@link DaemonClient} that can be used to run builds.
      */
-    public ServiceRegistry createBuildClientServices(ServiceLookup clientLoggingServices, DaemonParameters daemonParameters, DaemonRequestContext requestContext, InputStream stdin) {
+    public ServiceRegistry createBuildClientServices(ServiceLookup clientLoggingServices, DaemonParameters daemonParameters, DaemonRequestContext requestContext, InputStream stdin, Optional<InternalBuildProgressListener> buildProgressListener) {
         ServiceRegistry loggingServices = createLoggingServices(clientLoggingServices);
-        return new DaemonClientServices(loggingServices, daemonParameters, requestContext, stdin);
+        return new DaemonClientServices(loggingServices, daemonParameters, requestContext, stdin, buildProgressListener);
     }
 
     /**
@@ -70,6 +72,6 @@ public class DaemonClientFactory {
      */
     public ServiceRegistry createMessageDaemonServices(ServiceLookup clientLoggingServices, DaemonParameters daemonParameters) {
         // These can always run inside the current JVM since we should not be forking a daemon to run them
-        return createBuildClientServices(clientLoggingServices, daemonParameters, new DaemonRequestContext(Jvm.current(), null, Collections.emptyList(), false, NativeServices.NativeServicesMode.NOT_SET, DaemonParameters.Priority.NORMAL), new ByteArrayInputStream(new byte[0]));
+        return createBuildClientServices(clientLoggingServices, daemonParameters, new DaemonRequestContext(Jvm.current(), null, Collections.emptyList(), false, NativeServices.NativeServicesMode.NOT_SET, DaemonParameters.Priority.NORMAL), new ByteArrayInputStream(new byte[0]), Optional.empty());
     }
 }
