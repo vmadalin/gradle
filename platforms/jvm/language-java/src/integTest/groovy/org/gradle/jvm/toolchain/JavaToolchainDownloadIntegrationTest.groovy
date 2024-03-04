@@ -18,9 +18,8 @@ package org.gradle.jvm.toolchain
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.executer.DocumentationUtils
-import org.gradle.internal.os.OperatingSystem
-import org.gradle.platform.Architecture
-import org.gradle.platform.internal.DefaultBuildPlatform
+import org.gradle.platform.internal.CurrentBuildPlatform
+import org.gradle.util.TestUtil
 
 import static org.gradle.integtests.fixtures.SuggestionsMessages.GET_HELP
 import static org.gradle.integtests.fixtures.SuggestionsMessages.INFO_DEBUG
@@ -154,7 +153,7 @@ class JavaToolchainDownloadIntegrationTest extends AbstractIntegrationSpec {
     }
 
     private def getFailureMessageBuildPlatform() {
-        def buildPlatform = new DefaultBuildPlatform(Architecture.current(), OperatingSystem.current())
+        def buildPlatform = TestUtil.objectFactory().newInstance(CurrentBuildPlatform.class)
         return "for ${buildPlatform.operatingSystem} on ${buildPlatform.architecture.toString().toLowerCase()}"
     }
 
