@@ -24,6 +24,7 @@ import org.gradle.platform.Architecture;
 import org.gradle.platform.OperatingSystem;
 
 import javax.inject.Inject;
+import java.util.Objects;
 
 public class DefaultBuildPlatform implements BuildPlatform {
 
@@ -42,6 +43,16 @@ public class DefaultBuildPlatform implements BuildPlatform {
         });
     }
 
+    public DefaultBuildPlatform(Architecture architecture, final OperatingSystem operatingSystem) {
+        this.architecture = architecture;
+        this.operatingSystem = Suppliers.memoize(new Supplier<OperatingSystem>() {
+            @Override
+            public OperatingSystem get() {
+                return operatingSystem;
+            }
+        });
+    }
+
     @Override
     public Architecture getArchitecture() {
         return architecture;
@@ -50,6 +61,23 @@ public class DefaultBuildPlatform implements BuildPlatform {
     @Override
     public OperatingSystem getOperatingSystem() {
         return operatingSystem.get();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        DefaultBuildPlatform that = (DefaultBuildPlatform) o;
+        return Objects.equals(getArchitecture(), that.getArchitecture()) && Objects.equals(getOperatingSystem(), that.getOperatingSystem());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getArchitecture(), getOperatingSystem());
     }
 
     public static OperatingSystem getOperatingSystem(org.gradle.internal.os.OperatingSystem operatingSystem) {
@@ -61,7 +89,7 @@ public class DefaultBuildPlatform implements BuildPlatform {
             return OperatingSystem.WINDOWS;
         } else if (org.gradle.internal.os.OperatingSystem.MAC_OS == operatingSystem) {
             return OperatingSystem.MAC_OS;
-        } else  if (org.gradle.internal.os.OperatingSystem.SOLARIS == operatingSystem) {
+        } else if (org.gradle.internal.os.OperatingSystem.SOLARIS == operatingSystem) {
             return OperatingSystem.SOLARIS;
         } else if (org.gradle.internal.os.OperatingSystem.FREE_BSD == operatingSystem) {
             return OperatingSystem.FREE_BSD;
