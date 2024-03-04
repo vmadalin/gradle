@@ -38,6 +38,7 @@ import org.gradle.jvm.toolchain.internal.SdkmanInstallationSupplier;
 import org.gradle.jvm.toolchain.internal.ToolchainConfiguration;
 import org.gradle.jvm.toolchain.internal.WindowsInstallationSupplier;
 import org.gradle.jvm.toolchain.internal.install.DefaultJdkCacheDirectory;
+import org.gradle.jvm.toolchain.internal.install.JdkCacheDirectoryInstaller;
 
 import java.util.List;
 
@@ -73,7 +74,7 @@ public class DaemonClientToolchainServices {
         return new DefaultJavaInstallationRegistry(toolchainConfiguration, installationSuppliers, jvmMetadataDetector, null, OperatingSystem.current(), progressLoggerFactory, fileResolver, jdkCacheDirectory, new JvmInstallationProblemReporter());
     }
 
-    protected JdkCacheDirectory createJdkCacheDirectory(GradleUserHomeDirProvider gradleUserHomeDirProvider, FileLockManager fileLockManager, JvmMetadataDetector jvmMetadataDetector) {
-        return new DefaultJdkCacheDirectory(gradleUserHomeDirProvider, null, fileLockManager, jvmMetadataDetector);
+    protected JdkCacheDirectory createJdkCacheDirectory(GradleUserHomeDirProvider gradleUserHomeDirProvider, FileLockManager fileLockManager, JdkCacheDirectoryInstaller jdkCacheDirectoryInstaller) {
+        return new DefaultJdkCacheDirectory(gradleUserHomeDirProvider, fileLockManager, jdkCacheDirectoryInstaller);
     }
 }

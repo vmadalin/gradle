@@ -198,7 +198,7 @@ class DaemonJavaToolchainQueryServiceTest extends Specification {
         def detector = createJvmMetadataDetector(getVersion, getVendor)
         def currentJavaHomePath = currentJavaHome?.location ?: Jvm.current().javaHome
 
-        return new DaemonJavaToolchainQueryService(createInstallationRegistry(installations, detector), currentJavaHomePath)
+        return new DaemonJavaToolchainQueryService(createInstallationRegistry(installations, detector), jvmMetadataDetector, currentJavaHomePath)
     }
 
     private def createInstallationRegistry(Collection<String> locations, JvmMetadataDetector detector) {

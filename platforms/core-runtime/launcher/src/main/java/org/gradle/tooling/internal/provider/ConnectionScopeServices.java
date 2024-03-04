@@ -22,6 +22,8 @@ import org.gradle.initialization.layout.BuildLayoutFactory;
 import org.gradle.internal.agents.AgentStatus;
 import org.gradle.internal.concurrent.ExecutorFactory;
 import org.gradle.internal.event.ListenerManager;
+import org.gradle.internal.jvm.inspection.JavaInstallationRegistry;
+import org.gradle.internal.jvm.inspection.JvmMetadataDetector;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.logging.console.GlobalUserInputReceiver;
 import org.gradle.internal.service.ServiceRegistration;
@@ -32,6 +34,7 @@ import org.gradle.launcher.daemon.client.DaemonClientFactory;
 import org.gradle.launcher.daemon.client.DaemonClientGlobalServices;
 import org.gradle.launcher.daemon.client.DaemonStopClient;
 import org.gradle.launcher.daemon.configuration.DaemonParameters;
+import org.gradle.launcher.daemon.toolchain.DaemonJavaToolchainQueryService;
 import org.gradle.launcher.exec.BuildExecuter;
 import org.gradle.tooling.internal.adapter.ProtocolToModelAdapter;
 import org.gradle.tooling.internal.provider.serialization.ClassLoaderCache;
@@ -69,6 +72,8 @@ public class ConnectionScopeServices {
                                                 UserInputReader userInputReader,
                                                 ExecutorFactory executorFactory,
                                                 JvmVersionDetector jvmVersionDetector,
+                                                JvmMetadataDetector jvmMetadataDetector,
+                                                JavaInstallationRegistry javaInstallationRegistry,
                                                 // This is here to trigger creation of the ShutdownCoordinator. Could do this in a nicer way
                                                 ShutdownCoordinator shutdownCoordinator) {
         ClassLoaderCache classLoaderCache = new ClassLoaderCache();
@@ -76,6 +81,8 @@ public class ConnectionScopeServices {
                 serviceRegistry,
                 buildLayoutFactory,
                 daemonClientFactory,
+                // TODO review this
+                //new DaemonJavaToolchainQueryService(javaInstallationRegistry),
                 buildActionExecuter,
                 new PayloadSerializer(
                         new WellKnownClassLoaderRegistry(

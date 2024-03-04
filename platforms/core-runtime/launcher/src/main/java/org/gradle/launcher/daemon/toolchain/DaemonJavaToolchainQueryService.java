@@ -22,10 +22,14 @@ import org.gradle.internal.jvm.Jvm;
 import org.gradle.internal.jvm.inspection.JavaInstallationRegistry;
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadata;
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadataComparator;
+import org.gradle.internal.jvm.inspection.JvmMetadataDetector;
 import org.gradle.internal.jvm.inspection.JvmToolchainMetadata;
 import org.gradle.internal.os.OperatingSystem;
-import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.jvm.toolchain.JavaToolchainSpec;
+import org.gradle.jvm.toolchain.internal.InstallationLocation;
 import org.gradle.jvm.toolchain.internal.JvmInstallationMetadataMatcher;
+import org.gradle.jvm.toolchain.internal.ToolchainDownloadFailedException;
+import org.gradle.jvm.toolchain.internal.install.JavaToolchainProvisioningService;
 
 import java.io.File;
 import java.util.Comparator;
@@ -34,37 +38,60 @@ import java.util.function.Predicate;
 
 public class DaemonJavaToolchainQueryService {
 
+    private final JavaToolchainProvisioningService javaToolchainProvisioningService;
     private final JavaInstallationRegistry javaInstallationRegistry;
+    private final JvmMetadataDetector jvmMetadataDetector;
     private final File currentJavaHome;
 
-    public DaemonJavaToolchainQueryService(JavaInstallationRegistry javaInstallationRegistry) {
-        this(javaInstallationRegistry, Jvm.current().getJavaHome());
+    public DaemonJavaToolchainQueryService(JavaInstallationRegistry javaInstallationRegistry, JavaToolchainProvisioningService javaToolchainProvisioningService, JvmMetadataDetector jvmMetadataDetector) {
+        this(javaInstallationRegistry, javaToolchainProvisioningService, jvmMetadataDetector, Jvm.current().getJavaHome());
     }
 
     @VisibleForTesting
-    public DaemonJavaToolchainQueryService(JavaInstallationRegistry javaInstallationRegistry, File currentJavaHome) {
+    public DaemonJavaToolchainQueryService(JavaInstallationRegistry javaInstallationRegistry, JavaToolchainProvisioningService javaToolchainProvisioningService, JvmMetadataDetector jvmMetadataDetector, File currentJavaHome) {
         this.javaInstallationRegistry = javaInstallationRegistry;
+        this.javaToolchainProvisioningService = javaToolchainProvisioningService;
+        this.jvmMetadataDetector = jvmMetadataDetector;
         this.currentJavaHome = currentJavaHome;
     }
 
-    public JvmInstallationMetadata findMatchingToolchain(DaemonJvmCriteria toolchainSpec) throws GradleException {
-        Optional<JvmToolchainMetadata> installation = locateToolchain(toolchainSpec);
-        if (!installation.isPresent()) {
-            String exceptionMessage = String.format(
-                "Cannot find a Java installation on your machine (%s) matching the Daemon JVM defined requirements: %s.", OperatingSystem.current(), toolchainSpec
-            );
-            throw new GradleException(exceptionMessage);
-        }
-        return installation.get().metadata;
+    public JvmInstallationMetadata findMatchingToolchain(JavaToolchainSpec toolchainSpec) throws GradleException {
+        return findInstalledToolchain(toolchainSpec).orElseGet(() -> downloadToolchain(toolchainSpec)).metadata;
     }
 
-    private Optional<JvmToolchainMetadata> locateToolchain(DaemonJvmCriteria toolchainSpec) {
-        Predicate<JvmInstallationMetadata> matcher = new JvmInstallationMetadataMatcher(JavaLanguageVersion.of(toolchainSpec.getJavaVersion().getMajorVersion()), toolchainSpec.getVendorSpec(), toolchainSpec.getJvmImplementation());
+    private Optional<JvmToolchainMetadata> findInstalledToolchain(JavaToolchainSpec toolchainSpec) {
+        Predicate<JvmInstallationMetadata> matcher = new JvmInstallationMetadataMatcher(toolchainSpec);
         JvmInstallationMetadataComparator metadataComparator = new JvmInstallationMetadataComparator(currentJavaHome);
-
         return javaInstallationRegistry.toolchains().stream()
             .filter(result -> result.metadata.isValidInstallation())
             .filter(result -> matcher.test(result.metadata))
             .min(Comparator.comparing(result -> result.metadata, metadataComparator));
+    }
+
+    private JvmToolchainMetadata downloadToolchain(JavaToolchainSpec toolchainSpec) {
+        File installation;
+        try {
+            installation = javaToolchainProvisioningService.tryInstall(toolchainSpec);
+        } catch (ToolchainDownloadFailedException e) {
+            // TODO make NoToolchainAvailableException more generic to no task linked on the message
+            // throw new NoToolchainAvailableException(spec, buildPlatform, e);
+            String exceptionMessage = String.format(
+                "Cannot find a Java installation on your machine matching the Daemon JVM defined requirements: %s for %s.", toolchainSpec, OperatingSystem.current()
+            );
+            throw new GradleException(exceptionMessage);
+        }
+
+        InstallationLocation downloadedInstallation = InstallationLocation.autoProvisioned(installation, "provisioned toolchain");
+        return asToolchainMetadataOrThrow(downloadedInstallation);
+    }
+
+    private JvmToolchainMetadata asToolchainMetadataOrThrow(InstallationLocation javaHome) {
+        JvmInstallationMetadata metadata = jvmMetadataDetector.getMetadata(javaHome);
+
+        if (metadata.isValidInstallation()) {
+            return new JvmToolchainMetadata(metadata, javaHome);
+        } else {
+            throw new GradleException("Toolchain installation '" + javaHome.getLocation() + "' could not be probed: " + metadata.getErrorMessage(), metadata.getErrorCause());
+        }
     }
 }
