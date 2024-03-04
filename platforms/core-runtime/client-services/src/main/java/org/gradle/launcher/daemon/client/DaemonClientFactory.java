@@ -33,10 +33,12 @@ import org.gradle.launcher.daemon.context.DaemonRequestContext;
 import org.gradle.launcher.daemon.registry.DaemonRegistryServices;
 import org.gradle.launcher.daemon.toolchain.DaemonClientToolchainServices;
 import org.gradle.launcher.daemon.toolchain.DaemonJvmCriteria;
+import org.gradle.tooling.internal.protocol.InternalBuildProgressListener;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Collections;
+import java.util.Optional;
 
 @ServiceScope(Scope.Global.class)
 public class DaemonClientFactory {
@@ -49,8 +51,8 @@ public class DaemonClientFactory {
     /**
      * Creates the services for a {@link DaemonClient} that can be used to run builds.
      */
-    public ServiceRegistry createBuildClientServices(ServiceLookup clientLoggingServices, DaemonParameters daemonParameters, DaemonRequestContext requestContext, InputStream stdin) {
-        return clientServicesBuilder(clientLoggingServices, daemonParameters, requestContext)
+    public ServiceRegistry createBuildClientServices(ServiceLookup clientLoggingServices, DaemonParameters daemonParameters, DaemonRequestContext requestContext, InputStream stdin, Optional<InternalBuildProgressListener> buildProgressListener) {
+        return clientServicesBuilder(clientLoggingServices, daemonParameters, requestContext, buildProgressListener)
             .provider(new DaemonClientServices(stdin))
             .build();
     }
@@ -59,12 +61,12 @@ public class DaemonClientFactory {
      * Creates the services for a {@link DaemonClient} that can be used to run a build in a single-use daemon.
      */
     public ServiceRegistry createSingleUseDaemonClientServices(ServiceLookup clientLoggingServices, DaemonParameters daemonParameters, DaemonRequestContext requestContext, InputStream stdin) {
-        return clientServicesBuilder(clientLoggingServices, daemonParameters, requestContext)
+        return clientServicesBuilder(clientLoggingServices, daemonParameters, requestContext, Optional.empty())
             .provider(new SingleUseDaemonClientServices(stdin))
             .build();
     }
 
-    private ServiceRegistryBuilder clientServicesBuilder(ServiceLookup clientLoggingServices, DaemonParameters daemonParameters, DaemonRequestContext requestContext) {
+    private ServiceRegistryBuilder clientServicesBuilder(ServiceLookup clientLoggingServices, DaemonParameters daemonParameters, DaemonRequestContext requestContext, Optional<InternalBuildProgressListener> buildProgressListener) {
         ServiceRegistry loggingServices = createLoggingServices(clientLoggingServices);
 
         return ServiceRegistryBuilder.builder()
@@ -82,7 +84,7 @@ public class DaemonClientFactory {
                 }
             })
             .provider(new DaemonRegistryServices(daemonParameters.getBaseDir()))
-            .provider(new DaemonClientToolchainServices(daemonParameters.getToolchainConfiguration()));
+            .provider(new DaemonClientToolchainServices(daemonParameters.getToolchainConfiguration(),  daemonParameters.getToolchainDownloadUrlProvider(), buildProgressListener));
     }
 
     private ServiceRegistry createLoggingServices(ServiceLookup clientLoggingServices) {
@@ -112,6 +114,6 @@ public class DaemonClientFactory {
      */
     public ServiceRegistry createMessageDaemonServices(ServiceLookup clientLoggingServices, DaemonParameters daemonParameters) {
         // These can always run inside the current JVM since we should not be forking a daemon to run them
-        return createBuildClientServices(clientLoggingServices, daemonParameters, new DaemonRequestContext(new DaemonJvmCriteria.LauncherJvm(), Collections.emptyList(), false, NativeServices.NativeServicesMode.NOT_SET, DaemonPriority.NORMAL), new ByteArrayInputStream(new byte[0]));
+        return createBuildClientServices(clientLoggingServices, daemonParameters, new DaemonRequestContext(new DaemonJvmCriteria.LauncherJvm(), Collections.emptyList(), false, NativeServices.NativeServicesMode.NOT_SET, DaemonPriority.NORMAL), new ByteArrayInputStream(new byte[0]), Optional.empty());
     }
 }
