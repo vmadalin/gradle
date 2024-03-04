@@ -24,7 +24,7 @@ class DaemonJvmPropertiesFixture extends BuildPropertiesFixture {
         super(projectDirectory)
     }
 
-    def assertJvmCriteria(Integer version, String vendor = null, String implementation = null) {
+    def assertJvmCriteriaProperties(Integer version, String vendor = null, String implementation = null) {
         assertBuildPropertyExist("daemon.jvm.toolchain.version=$version")
         if (vendor == null) {
             assertBuildPropertyNotExist("daemon.jvm.toolchain.vendor")
@@ -35,6 +35,14 @@ class DaemonJvmPropertiesFixture extends BuildPropertiesFixture {
             assertBuildPropertyNotExist("daemon.jvm.toolchain.implementation")
         } else {
             assertBuildPropertyExist("daemon.jvm.toolchain.implementation=$implementation")
+        }
+
+        return true
+    }
+
+    def assertToolchainDownloadUrlsProperties(Map<String, String> platformToolchainUrl) {
+        platformToolchainUrl.forEach { platform, url ->
+            assertBuildPropertyExist("daemon.jvm.toolchain.${platform}.url=$url")
         }
 
         return true

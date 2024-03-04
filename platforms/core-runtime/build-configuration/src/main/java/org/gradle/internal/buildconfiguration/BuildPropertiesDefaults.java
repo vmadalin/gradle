@@ -22,6 +22,7 @@ public class BuildPropertiesDefaults {
     public static final String TOOLCHAIN_VERSION_PROPERTY = "daemon.jvm.toolchain.version";
     public static final String TOOLCHAIN_VENDOR_PROPERTY = "daemon.jvm.toolchain.vendor";
     public static final String TOOLCHAIN_IMPLEMENTATION_PROPERTY = "daemon.jvm.toolchain.implementation";
+    public static final String TOOLCHAIN_URL_PROPERTY_FORMAT = "daemon.jvm.toolchain.%s.%s.url";
 
     public static final Integer TOOLCHAIN_VERSION = Integer.valueOf(JavaVersion.getLatestSupportedLTS().getMajorVersion());
 }

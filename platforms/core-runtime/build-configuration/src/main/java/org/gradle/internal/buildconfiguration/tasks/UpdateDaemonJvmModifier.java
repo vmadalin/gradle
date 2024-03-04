@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 
-package org.gradle.internal.buildconfiguration;
+package org.gradle.internal.buildconfiguration.tasks;
 
-import org.gradle.api.JavaVersion;
+import org.gradle.internal.buildconfiguration.BuildPropertiesDefaults;
+import org.gradle.internal.buildconfiguration.BuildPropertiesModifier;
 import org.gradle.internal.jvm.inspection.JvmVendor;
 import org.gradle.jvm.toolchain.JvmImplementation;
+import org.gradle.platform.BuildPlatform;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.net.URI;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 public class UpdateDaemonJvmModifier extends BuildPropertiesModifier {
 
@@ -32,9 +38,9 @@ public class UpdateDaemonJvmModifier extends BuildPropertiesModifier {
     public void updateJvmCriteria(
         Integer toolchainVersion,
         @Nullable JvmVendor toolchainVendor,
-        @Nullable JvmImplementation toolchainImplementation
+        @Nullable JvmImplementation toolchainImplementation,
+        Map<BuildPlatform, Optional<URI>> toolchainDownloadUrlByPlatformMap
     ) {
-        validateToolchainVersion(toolchainVersion);
         updateProperties(buildProperties -> {
             buildProperties.put(BuildPropertiesDefaults.TOOLCHAIN_VERSION_PROPERTY, toolchainVersion.toString());
             if (toolchainVendor != null) {
@@ -47,16 +53,21 @@ public class UpdateDaemonJvmModifier extends BuildPropertiesModifier {
             } else {
                 buildProperties.remove(BuildPropertiesDefaults.TOOLCHAIN_IMPLEMENTATION_PROPERTY);
             }
+
+            toolchainDownloadUrlByPlatformMap.forEach((buildPlatform, url) -> {
+                String toolchainUrlProperty = getToolchainUrlPropertyForPlatform(buildPlatform);
+                if (url.isPresent()) {
+                    buildProperties.put(toolchainUrlProperty, url.get().toString());
+                } else {
+                    buildProperties.remove(toolchainUrlProperty);
+                }
+            });
         });
     }
 
-    private void validateToolchainVersion(Integer version) {
-        int minimumSupportedVersion = Integer.parseInt(JavaVersion.VERSION_1_8.getMajorVersion());
-        int maximumSupportedVersion = Integer.parseInt(JavaVersion.VERSION_HIGHER.getMajorVersion());
-        if (version < minimumSupportedVersion || version > maximumSupportedVersion) {
-            String exceptionMessage = String.format("Invalid integer value %d provided for the 'toolchain-version' option. The supported values are in the range [%d, %d].",
-                version, minimumSupportedVersion, maximumSupportedVersion);
-            throw new IllegalArgumentException(exceptionMessage);
-        }
+    private String getToolchainUrlPropertyForPlatform(BuildPlatform buildPlatform) {
+        String architecture = buildPlatform.getArchitecture().name().toLowerCase(Locale.ROOT);
+        String operatingSystem = buildPlatform.getOperatingSystem().name().replace("_", "").toLowerCase(Locale.ROOT);
+        return String.format(BuildPropertiesDefaults.TOOLCHAIN_URL_PROPERTY_FORMAT, operatingSystem, architecture);
     }
 }

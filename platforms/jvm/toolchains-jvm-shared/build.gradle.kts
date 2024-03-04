@@ -22,6 +22,7 @@ description = "Declarations to define JVM toolchains shared between launcher and
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":platform-jvm"))
 
     implementation(libs.commonsIo)
     implementation(libs.commonsLang)
