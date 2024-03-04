@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package org.gradle.launcher.daemon
+package org.gradle.jvm.toolchain.internal.install;
 
-import org.gradle.integtests.fixtures.daemon.AbstractDaemonToolchainIntegrationTest
-import org.gradle.integtests.fixtures.executer.TaskExecuter
+import java.io.File;
+import java.io.IOException;
 
-class DaemonToolchainIntegrationTest extends AbstractDaemonToolchainIntegrationTest {
+public interface JdkFileOperations {
 
-    @Override
-    TaskExecuter createTaskExecuter() {
-        executer.startLauncherInDebugger(true)
-        return new CommandLineTaskExecuter(executer)
-    }
+    void delete(File file);
+
+    void copy(File from, File into);
+
+    void unpack(File archive, File targetDirectory) throws IOException;
+
 }

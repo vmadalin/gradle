@@ -16,33 +16,27 @@
 
 package org.gradle.wrapper;
 
+import org.gradle.api.internal.file.archive.Unzip;
 import org.gradle.internal.file.locking.ExclusiveFileAccessManager;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.URI;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.Formatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
-import java.util.zip.ZipFile;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
-import static org.gradle.internal.file.PathTraversalChecker.safePathName;
 import static org.gradle.wrapper.Download.safeUri;
 
 public class Install {
@@ -150,7 +144,9 @@ public class Install {
 
     private void unzipLocal(File localZipFile, File distDir) throws IOException {
         try {
-            unzip(localZipFile, distDir);
+            // TODO add unzip
+            // Unzip.unzip(localZipFile, distDir);
+            throw new IOException();
         } catch (IOException e) {
             logger.log("Could not unzip " + localZipFile.getAbsolutePath() + " to " + distDir.getAbsolutePath() + ".");
             logger.log("Reason: " + e.getMessage());
@@ -314,44 +310,6 @@ public class Install {
 
         // The directory is now empty so delete it
         return dir.delete();
-    }
-
-    private void unzip(File zip, File dest) throws IOException {
-        ZipFile zipFile = new ZipFile(zip);
-        try {
-            Enumeration<? extends ZipEntry> entries = zipFile.entries();
-
-            while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-
-                File destFile = new File(dest, safePathName(entry.getName()));
-                if (entry.isDirectory()) {
-                    destFile.mkdirs();
-                    continue;
-                }
-
-                OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(destFile));
-                try {
-                    copyInputStream(zipFile.getInputStream(entry), outputStream);
-                } finally {
-                    outputStream.close();
-                }
-            }
-        } finally {
-            zipFile.close();
-        }
-    }
-
-    private void copyInputStream(InputStream in, OutputStream out) throws IOException {
-        byte[] buffer = new byte[1024];
-        int len;
-
-        while ((len = in.read(buffer)) >= 0) {
-            out.write(buffer, 0, len);
-        }
-
-        in.close();
-        out.close();
     }
 
     private static class InstallCheck {

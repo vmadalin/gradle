@@ -21,6 +21,7 @@ import org.gradle.api.internal.provider.PropertyFactory;
 import org.gradle.initialization.layout.BuildLayoutFactory;
 import org.gradle.internal.agents.AgentStatus;
 import org.gradle.internal.event.ListenerManager;
+import org.gradle.internal.jvm.inspection.JvmMetadataDetector;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.internal.logging.events.OutputEventListener;
 import org.gradle.internal.service.ServiceRegistration;
@@ -69,6 +70,7 @@ public class ConnectionScopeServices {
                                                 BuildLayoutFactory buildLayoutFactory,
                                                 ServiceRegistry serviceRegistry,
                                                 JvmVersionDetector jvmVersionDetector,
+                                                JvmMetadataDetector jvmMetadataDetector,
                                                 FileCollectionFactory fileCollectionFactory,
                                                 PropertyFactory propertyFactory,
                                                 // This is here to trigger creation of the ShutdownCoordinator. Could do this in a nicer way
@@ -78,7 +80,8 @@ public class ConnectionScopeServices {
                 serviceRegistry,
                 buildLayoutFactory,
                 daemonClientFactory,
-                new DaemonJavaToolchainQueryService(daemonJavaInstallationRegistryFactory),
+                // TODO review this
+                new DaemonJavaToolchainQueryService(daemonJavaInstallationRegistryFactory, jvmMetadataDetector, null),
                 buildActionExecuter,
                 new PayloadSerializer(
                         new WellKnownClassLoaderRegistry(
