@@ -77,8 +77,8 @@ public class DefaultDaemonContext implements DaemonContext {
     @Override
     public String toString() {
         // Changes to this also affect org.gradle.integtests.fixtures.daemon.DaemonContextParser
-        return String.format("DefaultDaemonContext[uid=%s,javaHome=%s,javaVersion=%s,daemonRegistryDir=%s,pid=%s,idleTimeout=%s,priority=%s,applyInstrumentationAgent=%s,nativeServicesMode=%s,daemonOpts=%s]",
-            uid, javaHome, javaVersion, daemonRegistryDir, pid, idleTimeout, priority, applyInstrumentationAgent, nativeServicesMode, Joiner.on(',').join(daemonOpts));
+        return String.format("DefaultDaemonContext[uid=%s,javaHome=%s,javaVersion=%s,javaVendor=%s,daemonRegistryDir=%s,pid=%s,idleTimeout=%s,priority=%s,applyInstrumentationAgent=%s,nativeServicesMode=%s,daemonOpts=%s]",
+            uid, javaHome, javaVersion, javaVendor, daemonRegistryDir, pid, idleTimeout, priority, applyInstrumentationAgent, nativeServicesMode, Joiner.on(',').join(daemonOpts));
     }
 
     @Override

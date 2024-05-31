@@ -75,9 +75,9 @@ public class DaemonContextParser {
             String pidStr = matcher.group(6);
             Long pid = pidStr.equals("null") ? null : Long.parseLong(pidStr);
             Integer idleTimeout = Integer.decode(matcher.group(7));
-            DaemonParameters.Priority priority = matcher.group(8) == null ? DaemonParameters.Priority.NORMAL : DaemonParameters.Priority.valueOf(matcher.group(7).substring(",priority=".length()));
+            DaemonParameters.Priority priority = matcher.group(8) == null ? DaemonParameters.Priority.NORMAL : DaemonParameters.Priority.valueOf(matcher.group(8).substring(",priority=".length()));
             boolean applyInstrumentationAgent = Boolean.parseBoolean(matcher.group(9));
-            NativeServicesMode nativeServicesMode = matcher.group(10) == null ? NativeServicesMode.ENABLED : NativeServicesMode.valueOf(matcher.group(9));
+            NativeServicesMode nativeServicesMode = matcher.group(10) == null ? NativeServicesMode.ENABLED : NativeServicesMode.valueOf(matcher.group(10));
             List<String> jvmOpts = Lists.newArrayList(Splitter.on(',').split(matcher.group(11)));
             return new DefaultDaemonContext(uid, new File(javaHome), JavaVersion.toVersion(javaVersion), javaVendor, new File(daemonRegistryDir), pid, idleTimeout, jvmOpts, applyInstrumentationAgent, nativeServicesMode, priority);
         } else {

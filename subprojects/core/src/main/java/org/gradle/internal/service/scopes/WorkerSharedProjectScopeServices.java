@@ -89,7 +89,7 @@ public class WorkerSharedProjectScopeServices {
             FileHasher fileHasher,
             DefaultResourceHandler.Factory resourceHandlerFactory,
             FileCollectionFactory fileCollectionFactory,
-            ObjectFactory objectFactory,
+            PropertyFactory propertyFactory,
             FileSystem fileSystem,
             Factory<PatternSet> patternSetFactory,
             Deleter deleter,
@@ -106,20 +106,20 @@ public class WorkerSharedProjectScopeServices {
                 fileHasher,
                 resourceHandlerFactory,
                 fileCollectionFactory,
-                objectFactory,
+                propertyFactory,
                 fileSystem,
                 patternSetFactory,
                 deleter,
                 documentationRegistry,
                 taskDependencyFactory,
                 providers,
-            decompressionCoordinator,
+                decompressionCoordinator,
                 temporaryFileProvider
         );
     }
 
-    protected FileSystemOperations createFileSystemOperations(ObjectFactory objectFactory, Instantiator instantiator, FileOperations fileOperations) {
-        return instantiator.newInstance(DefaultFileSystemOperations.class, objectFactory, fileOperations);
+    protected FileSystemOperations createFileSystemOperations(Instantiator instantiator, FileOperations fileOperations) {
+        return instantiator.newInstance(DefaultFileSystemOperations.class, instantiator, fileOperations);
     }
 
     protected ArchiveOperations createArchiveOperations(Instantiator instantiator, FileOperations fileOperations) {

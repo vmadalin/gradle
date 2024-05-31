@@ -64,6 +64,7 @@ import java.util.Collection;
 import static org.gradle.internal.snapshot.CaseSensitivity.CASE_INSENSITIVE;
 import static org.gradle.internal.snapshot.CaseSensitivity.CASE_SENSITIVE;
 import static org.gradle.util.TestUtil.objectFactory;
+import static org.gradle.util.TestUtil.propertyFactory;
 import static org.gradle.util.TestUtil.providerFactory;
 
 public class TestFiles {
@@ -167,7 +168,7 @@ public class TestFiles {
             fileHasher(),
             resourceHandlerFactory,
             fileCollectionFactory(basedDir),
-            objectFactory(),
+            propertyFactory(),
             fileSystem,
             getPatternSetFactory(),
             deleter(),
