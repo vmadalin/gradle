@@ -192,6 +192,7 @@ class JavaToolchainIntegrationTest extends AbstractIntegrationSpec implements Ja
         fails ':build'
         failure.assertHasDescription("Could not determine the dependencies of task ':compileJava'.")
                .assertHasCause("Failed to calculate the value of task ':compileJava' property 'javaCompiler'.")
-               .assertHasCause("No locally installed toolchains match and toolchain auto-provisioning is not enabled.")
+               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=11, vendor=IBM, implementation=J9} " +
+                   "for ${expectedBuildPlatformFailureMessage()} and toolchain auto-provisioning is not enabled.")
     }
 }

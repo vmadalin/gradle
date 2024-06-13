@@ -17,8 +17,9 @@
 package org.gradle.jvm.toolchain
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
+import org.gradle.integtests.fixtures.jvm.JavaToolchainFixture
 
-class JavaToolchainDownloadSpiKotlinIntegrationTest extends AbstractIntegrationSpec {
+class JavaToolchainDownloadSpiKotlinIntegrationTest extends AbstractIntegrationSpec implements JavaToolchainFixture {
 
     def "can inject custom toolchain registry via settings plugin"() {
         settingsKotlinFile << """
@@ -59,11 +60,9 @@ class JavaToolchainDownloadSpiKotlinIntegrationTest extends AbstractIntegrationS
         then:
         failure.assertHasDescription("Could not determine the dependencies of task ':compileJava'.")
                .assertHasCause("Failed to calculate the value of task ':compileJava' property 'javaCompiler'.")
-               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=99, vendor=matching('exotic'), implementation=vendor-specific} for")
-               .assertHasCause("No matching toolchain could be found in the locally installed toolchains or the configured toolchain download repositories. " +
-                   "Some toolchain resolvers had provisioning failures: custom (Unable to download toolchain matching the requirements " +
-                   "({languageVersion=99, vendor=matching('exotic'), implementation=vendor-specific}) from 'https://exoticJavaToolchain.com/java-99', " +
-                   "due to: Could not HEAD 'https://exoticJavaToolchain.com/java-99'.).")
+               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=99, vendor=matching('exotic'), implementation=vendor-specific} " +
+                   "for ${expectedBuildPlatformFailureMessage()} and some toolchain resolvers had provisioning failures: custom (Unable to download toolchain matching the requirements " +
+                   "({languageVersion=99, vendor=matching('exotic'), implementation=vendor-specific}) from 'https://exoticJavaToolchain.com/java-99', due to: Could not HEAD 'https://exoticJavaToolchain.com/java-99'.).")
     }
 
     private static String applyToolchainRegistryPlugin(String className, String code) {

@@ -113,8 +113,8 @@ public class DaemonClientToolchainServices {
         return new DaemonJavaToolchainProvisioningService(secureFileDownloader, jdkCacheDirectory, buildPlatform, toolchainDownloadUrlProvider, toolchainConfiguration.isDownloadEnabled(), progressLoggerFactory);
     }
 
-    protected JavaToolchainQueryService createJavaToolchainQueryService(JvmMetadataDetector jvmMetadataDetector, JavaToolchainProvisioningService javaToolchainProvisioningService, FileFactory fileFactory, JavaInstallationRegistry javaInstallationRegistry, BuildPlatform buildPlatform) {
-        return new JavaToolchainQueryService(jvmMetadataDetector, fileFactory, javaToolchainProvisioningService, javaInstallationRegistry, null, buildPlatform);
+    protected JavaToolchainQueryService createJavaToolchainQueryService(JvmMetadataDetector jvmMetadataDetector, JavaToolchainProvisioningService javaToolchainProvisioningService, FileFactory fileFactory, JavaInstallationRegistry javaInstallationRegistry) {
+        return new JavaToolchainQueryService(jvmMetadataDetector, fileFactory, javaToolchainProvisioningService, javaInstallationRegistry, null);
     }
 
     protected JavaInstallationRegistry createJavaInstallationRegistry(ToolchainConfiguration toolchainConfiguration, List<InstallationSupplier> installationSuppliers, JvmMetadataDetector jvmMetadataDetector, ProgressLoggerFactory progressLoggerFactory, FileResolver fileResolver, JdkCacheDirectory jdkCacheDirectory) {
