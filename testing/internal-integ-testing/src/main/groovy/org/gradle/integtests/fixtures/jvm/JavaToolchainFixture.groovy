@@ -21,7 +21,9 @@ import org.gradle.api.JavaVersion
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.internal.jvm.Jvm
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadata
+import org.gradle.platform.internal.CurrentBuildPlatform
 import org.gradle.test.fixtures.file.TestFile
+import org.gradle.util.TestUtil
 
 /**
  * Introduces helper methods to write integration tests using Java toolchains.
@@ -104,5 +106,13 @@ trait JavaToolchainFixture {
     JavaVersion classJavaVersion(File classFile) {
         assert classFile.exists()
         return JavaVersion.forClass(classFile.bytes)
+    }
+
+    /**
+     * Return failure message for the current running build platform
+     */
+    String expectedBuildPlatformFailureMessage() {
+        def buildPlatform = TestUtil.objectFactory().newInstance(CurrentBuildPlatform.class)
+        return "${buildPlatform.operatingSystem} on ${buildPlatform.architecture.toString().toLowerCase()}"
     }
 }

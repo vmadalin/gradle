@@ -30,10 +30,7 @@ import org.gradle.jvm.toolchain.JavaToolchainSpec
 import org.gradle.jvm.toolchain.JvmImplementation
 import org.gradle.jvm.toolchain.JvmVendorSpec
 import org.gradle.jvm.toolchain.internal.install.JavaToolchainProvisioningService
-import org.gradle.jvm.toolchain.internal.install.exceptions.NoToolchainAvailableException
-import org.gradle.platform.Architecture
-import org.gradle.platform.BuildPlatform
-import org.gradle.platform.OperatingSystem
+import org.gradle.jvm.toolchain.internal.install.exceptions.ToolchainDownloadException
 import org.gradle.util.TestUtil
 import spock.lang.Issue
 import spock.lang.Specification
@@ -223,9 +220,9 @@ class JavaToolchainQueryServiceTest extends Specification {
         toolchain.get()
 
         then:
-        def e = thrown(NoToolchainAvailableException)
-        e.message == "Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=12, vendor=any vendor, implementation=vendor-specific} for LINUX on x86_64."
-        e.cause.message == "Configured toolchain download repositories can't match requested specification"
+        def e = thrown(ToolchainDownloadException)
+        e.message == "Unable to download toolchain matching the requirements ({languageVersion=unspecified, vendor=any vendor, implementation=vendor-specific}) from 'http://server.com', due to: " +
+            "Configured toolchain download repositories can't match requested specification"
     }
 
     def "returns current JVM toolchain if requested"() {
@@ -444,7 +441,9 @@ class JavaToolchainQueryServiceTest extends Specification {
 
     private JavaToolchainProvisioningService createProvisioningService() {
         def provisioningService = Mock(JavaToolchainProvisioningService)
-        provisioningService.tryInstall(_ as JavaToolchainSpec) >> { throw new ToolchainDownloadFailedException("Configured toolchain download repositories can't match requested specification") }
+        def spec = createSpec()
+        def url = "http://server.com"
+        provisioningService.tryInstall(_ as JavaToolchainSpec) >> { throw new ToolchainDownloadException(spec, url, "Configured toolchain download repositories can't match requested specification") }
         provisioningService
     }
 
@@ -521,18 +520,7 @@ class JavaToolchainQueryServiceTest extends Specification {
         JavaToolchainProvisioningService provisioningService,
         File currentJavaHome = Jvm.current().getJavaHome()
     ) {
-        def buildPlatform = new BuildPlatform() {
-            @Override
-            OperatingSystem getOperatingSystem() {
-                return OperatingSystem.LINUX
-            }
-
-            @Override
-            Architecture getArchitecture() {
-                return Architecture.X86_64
-            }
-        }
         def fallbackToolchainSpec = TestUtil.objectFactory().newInstance(CurrentJvmToolchainSpec.class)
-        new JavaToolchainQueryService(detector, TestFiles.fileFactory(), provisioningService, registry, fallbackToolchainSpec, buildPlatform, currentJavaHome)
+        new JavaToolchainQueryService(detector, TestFiles.fileFactory(), provisioningService, registry, fallbackToolchainSpec, currentJavaHome)
     }
 }

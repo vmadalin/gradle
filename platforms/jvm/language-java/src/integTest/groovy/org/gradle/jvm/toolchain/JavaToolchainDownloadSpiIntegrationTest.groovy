@@ -20,6 +20,7 @@ import org.gradle.api.JavaVersion
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.executer.DocumentationUtils
 import org.gradle.integtests.fixtures.executer.ExecutionResult
+import org.gradle.integtests.fixtures.jvm.JavaToolchainFixture
 import org.junit.Assume
 
 import static JavaToolchainDownloadUtil.applyToolchainResolverPlugin
@@ -33,7 +34,7 @@ import static org.gradle.jvm.toolchain.JavaToolchainDownloadUtil.NO_RESOLVER
 import static org.gradle.jvm.toolchain.JavaToolchainDownloadUtil.NO_TOOLCHAIN_MANAGEMENT
 import static org.gradle.jvm.toolchain.JavaToolchainDownloadUtil.singleUrlResolverCode
 
-class JavaToolchainDownloadSpiIntegrationTest extends AbstractIntegrationSpec {
+class JavaToolchainDownloadSpiIntegrationTest extends AbstractIntegrationSpec implements JavaToolchainFixture {
 
     def "can inject custom toolchain registry via settings plugin"() {
         settingsFile << """
@@ -63,11 +64,10 @@ class JavaToolchainDownloadSpiIntegrationTest extends AbstractIntegrationSpec {
         then:
         failure.assertHasDescription("Could not determine the dependencies of task ':compileJava'.")
                .assertHasCause("Failed to calculate the value of task ':compileJava' property 'javaCompiler'.")
-               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=99, vendor=vendor matching('exotic'), implementation=vendor-specific} for ")
-               .assertHasCause("No matching toolchain could be found in the locally installed toolchains or the configured toolchain download repositories. " +
-                   "Some toolchain resolvers had provisioning failures: custom (Unable to download toolchain matching the requirements " +
-                   "({languageVersion=99, vendor=vendor matching('exotic'), implementation=vendor-specific}) from 'https://exoticJavaToolchain.com/java-99', " +
-                   "due to: Could not HEAD 'https://exoticJavaToolchain.com/java-99'.).")
+               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=99, vendor=vendor matching('exotic'), implementation=vendor-specific} " +
+                   "for ${expectedBuildPlatformFailureMessage()} and some toolchain resolvers had provisioning failures: custom (Unable to download toolchain matching the requirements " +
+                   "({languageVersion=99, vendor=vendor matching('exotic'), implementation=vendor-specific}) from 'https://exoticJavaToolchain.com/java-99', due to: " +
+                   "Could not HEAD 'https://exoticJavaToolchain.com/java-99'.)")
     }
 
     def "downloaded JDK is checked against the spec"() {
@@ -105,10 +105,10 @@ class JavaToolchainDownloadSpiIntegrationTest extends AbstractIntegrationSpec {
         then:
         failure.assertHasDescription("Could not determine the dependencies of task ':compileJava'.")
                .assertHasCause("Failed to calculate the value of task ':compileJava' property 'javaCompiler'.")
-               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=10, vendor=any vendor, implementation=vendor-specific} for")
-               .assertHasCause("No matching toolchain could be found in the locally installed toolchains or the configured toolchain download repositories. " +
-                   "Some toolchain resolvers had provisioning failures: custom (Unable to download toolchain matching the requirements ({languageVersion=10, vendor=any vendor, implementation=vendor-specific}) " +
-                   "from '$uri', due to: Toolchain provisioned from '$uri' doesn't satisfy the specification: {languageVersion=10, vendor=any vendor, implementation=vendor-specific} and must have the executable 'javac' and the executable 'javadoc'.)")
+               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=11, vendor=any vendor, implementation=vendor-specific} " +
+                   "for ${expectedBuildPlatformFailureMessage()} and some toolchain resolvers had provisioning failures: custom (Unable to download toolchain matching the requirements " +
+                   "({languageVersion=11, vendor=any vendor, implementation=vendor-specific}) from '$uri', due to: Toolchain provisioned from '$uri' doesn't satisfy the specification: " +
+                   "{languageVersion=11, vendor=any vendor, implementation=vendor-specific}.).")
     }
 
     def "custom toolchain registries are consulted in order"() {
@@ -155,11 +155,10 @@ class JavaToolchainDownloadSpiIntegrationTest extends AbstractIntegrationSpec {
         then:
         failure.assertHasDescription("Could not determine the dependencies of task ':compileJava'.")
                .assertHasCause("Failed to calculate the value of task ':compileJava' property 'javaCompiler'.")
-               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=99, vendor=vendor matching('exotic'), implementation=vendor-specific} for ")
-               .assertHasCause("No matching toolchain could be found in the locally installed toolchains or the configured toolchain download repositories. " +
-                   "Some toolchain resolvers had provisioning failures: custom (Unable to download toolchain matching the requirements " +
-                   "({languageVersion=99, vendor=vendor matching('exotic'), implementation=vendor-specific}) from 'https://exoticJavaToolchain.com/java-99', " +
-                   "due to: Could not HEAD 'https://exoticJavaToolchain.com/java-99'.).")
+               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=99, vendor=vendor matching('exotic'), implementation=vendor-specific} " +
+                   "for ${expectedBuildPlatformFailureMessage()} and some toolchain resolvers had provisioning failures: custom (Unable to download toolchain matching the requirements " +
+                    "({languageVersion=99, vendor=vendor matching('exotic'), implementation=vendor-specific}) from 'https://exoticJavaToolchain.com/java-99', due to: " +
+                    "Could not HEAD 'https://exoticJavaToolchain.com/java-99'.)")
     }
 
     def "fails on registration collision"() {
@@ -435,7 +434,8 @@ class JavaToolchainDownloadSpiIntegrationTest extends AbstractIntegrationSpec {
         then:
         failure.assertHasDescription("Could not determine the dependencies of task ':compileJava'.")
                .assertHasCause("Failed to calculate the value of task ':compileJava' property 'javaCompiler'.")
-               .assertHasCause("No locally installed toolchains match and toolchain download repositories have not been configured.")
+               .assertHasCause("Cannot find a Java installation on your machine matching toolchain requirements: {languageVersion=99, vendor=any vendor, implementation=vendor-specific} " +
+                   "for ${expectedBuildPlatformFailureMessage()} and toolchain download repositories have not been configured.")
                .assertHasResolutions(
                    DocumentationUtils.normalizeDocumentationLink("Learn more about toolchain auto-detection at https://docs.gradle.org/current/userguide/toolchains.html#sec:auto_detection."),
                    DocumentationUtils.normalizeDocumentationLink("Learn more about toolchain repositories at https://docs.gradle.org/current/userguide/toolchains.html#sub:download_repositories."),
@@ -482,7 +482,7 @@ class JavaToolchainDownloadSpiIntegrationTest extends AbstractIntegrationSpec {
 
             java {
                 toolchain {
-                    languageVersion = JavaLanguageVersion.of(11)
+                    languageVersion = JavaLanguageVersion.of(10)
                 }
             }
         """
@@ -506,12 +506,12 @@ class JavaToolchainDownloadSpiIntegrationTest extends AbstractIntegrationSpec {
 
         where:
         logLevel | test
-        "warn"   | { ExecutionResult r -> r.assertOutputContains("Some toolchain resolvers had internal failures: failsOnResolve (Ooops!). " +
-            "Some toolchain resolvers had provisioning failures: failsOnProvision (Unable to download toolchain matching the requirements ({languageVersion=11, vendor=any vendor, implementation=vendor-specific}) from 'http://exoticJavaToolchain.com/java-11', due to: Attempting to download java toolchain from an insecure URI http://exoticJavaToolchain.com/java-11. This is not supported, use a secure URI instead.). " +
-            "Switch logging level to DEBUG (--debug) for further information.")}
-        "debug"  | { ExecutionResult r -> r.assertOutputContains("java.lang.Exception: Some toolchain resolvers had internal failures: failsOnResolve (Ooops!). Some toolchain resolvers had provisioning failures: failsOnProvision (Unable to download toolchain matching the requirements ({languageVersion=11, vendor=any vendor, implementation=vendor-specific}) from 'http://exoticJavaToolchain.com/java-11', due to: Attempting to download java toolchain from an insecure URI http://exoticJavaToolchain.com/java-11. This is not supported, use a secure URI instead.).")
+        "warn"   | { ExecutionResult r -> r.assertOutputContains("some toolchain resolvers had internal failures: failsOnResolve (Ooops!). " +
+            "Some toolchain resolvers had provisioning failures: failsOnProvision (Unable to download toolchain matching the requirements ({languageVersion=10, vendor=any vendor, implementation=vendor-specific}) from 'http://exoticJavaToolchain.com/java-10', due to: Attempting to download java toolchain from an insecure URI http://exoticJavaToolchain.com/java-10. This is not supported, use a secure URI instead.)")
+        }
+        "debug"  | { ExecutionResult r -> r.assertOutputContains("some toolchain resolvers had internal failures: failsOnResolve (Ooops!). Some toolchain resolvers had provisioning failures: failsOnProvision (Unable to download toolchain matching the requirements ({languageVersion=10, vendor=any vendor, implementation=vendor-specific}) from 'http://exoticJavaToolchain.com/java-10', due to: Attempting to download java toolchain from an insecure URI http://exoticJavaToolchain.com/java-10. This is not supported, use a secure URI instead.)")
             .assertOutputContains("Suppressed: java.lang.Exception: Ooops!")
-            .assertOutputContains("Suppressed: org.gradle.jvm.toolchain.internal.install.DefaultJavaToolchainProvisioningService\$MissingToolchainException: Unable to download toolchain matching the requirements ({languageVersion=11, vendor=any vendor, implementation=vendor-specific}) from 'http://exoticJavaToolchain.com/java-11', due to: Attempting to download java toolchain from an insecure URI http://exoticJavaToolchain.com/java-11. This is not supported, use a secure URI instead.")
+            .assertOutputContains("Suppressed: org.gradle.jvm.toolchain.internal.install.exceptions.ToolchainDownloadException: Unable to download toolchain matching the requirements ({languageVersion=10, vendor=any vendor, implementation=vendor-specific}) from 'http://exoticJavaToolchain.com/java-10', due to: Attempting to download java toolchain from an insecure URI http://exoticJavaToolchain.com/java-10. This is not supported, use a secure URI instead.")
         }
     }
 

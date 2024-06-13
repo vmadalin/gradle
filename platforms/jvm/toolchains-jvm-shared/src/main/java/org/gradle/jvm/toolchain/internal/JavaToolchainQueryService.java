@@ -35,8 +35,6 @@ import org.gradle.internal.service.scopes.Scope;
 import org.gradle.internal.service.scopes.ServiceScope;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.jvm.toolchain.internal.install.JavaToolchainProvisioningService;
-import org.gradle.jvm.toolchain.internal.install.exceptions.NoToolchainAvailableException;
-import org.gradle.platform.BuildPlatform;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -102,7 +100,6 @@ public class JavaToolchainQueryService {
     private final ConcurrentMap<ToolchainLookupKey, Object> matchingToolchains;
     private final JavaToolchainSpec fallbackToolchainSpec;
     private final File currentJavaHome;
-    private final BuildPlatform buildPlatform;
     private final JavaInstallationRegistry registry;
 
     @Inject
@@ -111,10 +108,9 @@ public class JavaToolchainQueryService {
         FileFactory fileFactory,
         JavaToolchainProvisioningService provisioningService,
         JavaInstallationRegistry registry,
-        JavaToolchainSpec fallbackToolchainSpec,
-        BuildPlatform buildPlatform
+        JavaToolchainSpec fallbackToolchainSpec
     ) {
-        this(detector, fileFactory, provisioningService, registry, fallbackToolchainSpec, buildPlatform, Jvm.current().getJavaHome());
+        this(detector, fileFactory, provisioningService, registry, fallbackToolchainSpec, Jvm.current().getJavaHome());
     }
 
     @VisibleForTesting
@@ -124,7 +120,6 @@ public class JavaToolchainQueryService {
         JavaToolchainProvisioningService provisioningService,
         JavaInstallationRegistry registry,
         JavaToolchainSpec fallbackToolchainSpec,
-        BuildPlatform buildPlatform,
         File currentJavaHome
     ) {
         this.detector = detector;
@@ -132,7 +127,6 @@ public class JavaToolchainQueryService {
         this.installService = provisioningService;
         this.matchingToolchains = new ConcurrentHashMap<>();
         this.fallbackToolchainSpec = fallbackToolchainSpec;
-        this.buildPlatform = buildPlatform;
         this.currentJavaHome = currentJavaHome;
         this.registry = registry;
     }
@@ -219,14 +213,8 @@ public class JavaToolchainQueryService {
     }
 
     private JavaToolchain downloadToolchain(JavaToolchainSpec spec, Set<JavaInstallationCapability> requiredCapabilities) {
-        File installation;
-        try {
-            // TODO: inform installation process of required capabilities, needs public API change
-            installation = installService.tryInstall(spec);
-        } catch (ToolchainDownloadFailedException e) {
-            throw new NoToolchainAvailableException(spec, buildPlatform, e);
-        }
-
+        // TODO: inform installation process of required capabilities, needs public API change
+        File installation = installService.tryInstall(spec);
         InstallationLocation downloadedInstallation = InstallationLocation.autoProvisioned(installation, "provisioned toolchain");
         JavaToolchain downloadedToolchain = asToolchainOrThrow(downloadedInstallation, spec, requiredCapabilities, false);
         registry.addInstallation(downloadedInstallation);

@@ -16,30 +16,39 @@
 
 package org.gradle.jvm.toolchain.internal.install.exceptions;
 
+import org.apache.commons.lang.StringUtils;
 import org.gradle.api.GradleException;
 import org.gradle.internal.exceptions.Contextual;
+import org.gradle.internal.exceptions.ResolutionProvider;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
-import org.gradle.jvm.toolchain.internal.ToolchainDownloadFailedException;
 import org.gradle.platform.BuildPlatform;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 @Contextual
-public class NoToolchainAvailableException extends GradleException {
+public class ToolchainProvisioningNotConfiguredException extends GradleException implements ResolutionProvider {
 
-    public NoToolchainAvailableException(
+    private final List<String> resolutions;
+
+    public ToolchainProvisioningNotConfiguredException(
         JavaToolchainSpec specification,
         BuildPlatform buildPlatform,
-        ToolchainDownloadFailedException cause
+        String cause,
+        String... resolutions
     ) {
-        super(
-            String.format(
-                "Cannot find a Java installation on your machine matching toolchain requirements: %s for %s on %s.",
-                specification.getDisplayName(),
-                buildPlatform.getOperatingSystem(),
-                buildPlatform.getArchitecture().toString().toLowerCase(Locale.getDefault())
-            ),
-            cause
-        );
+        super(String.format(
+            "Cannot find a Java installation on your machine matching toolchain requirements: %s for %s on %s and %s",
+            specification.getDisplayName(),
+            buildPlatform.getOperatingSystem(),
+            buildPlatform.getArchitecture().toString().toLowerCase(Locale.getDefault()),
+            StringUtils.uncapitalize(cause)));
+        this.resolutions = Arrays.asList(resolutions);
+    }
+
+    @Override
+    public List<String> getResolutions() {
+        return resolutions;
     }
 }
