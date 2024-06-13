@@ -47,6 +47,8 @@ dependencies {
     api(projects.core)
     api(projects.coreApi)
     api(projects.fileCollections)
+    api(projects.fileTemp)
+    api(projects.files)
 
     api(libs.jsr305)
 
@@ -62,6 +64,7 @@ dependencies {
     implementation(projects.io)
     implementation(projects.buildConfiguration)
     implementation(projects.dependencyManagement)
+    implementation(projects.hashing)
 
     testImplementation(testFixtures(projects.core)) {
         because("ConcurrentSpecification")
