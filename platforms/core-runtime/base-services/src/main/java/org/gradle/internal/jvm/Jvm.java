@@ -30,8 +30,11 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
@@ -56,6 +59,7 @@ public class Jvm implements JavaInfo {
     private File javaExecutable;
     private File javacExecutable;
     private File javadocExecutable;
+    private File jarExecutable;
     private Optional<File> toolsJar;
     private Boolean jdk;
 
@@ -241,6 +245,18 @@ public class Jvm implements JavaInfo {
      * {@inheritDoc}
      */
     @Override
+    public File getJarExecutable() throws JavaHomeException {
+        if (jarExecutable != null) {
+            return jarExecutable;
+        }
+        jarExecutable = findExecutable("jar");
+        return jarExecutable;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public File getExecutable(String name) throws JavaHomeException {
         return findExecutable(name);
     }
@@ -401,5 +417,19 @@ public class Jvm implements JavaInfo {
             }
         }
         return null;
+    }
+
+    public Set<String> getJavaCapabilities() {
+        Set<String> capabilities = new HashSet<String>();
+        if (getJavacExecutable().exists()) {
+            capabilities.add("javac");
+        }
+        if (getJavadocExecutable().exists()) {
+            capabilities.add("javadoc");
+        }
+        if (getJarExecutable().exists()) {
+            capabilities.add("jar");
+        }
+        return capabilities;
     }
 }

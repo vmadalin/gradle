@@ -42,6 +42,12 @@ public interface JavaInfo {
      * @return the executable
      * @throws JavaHomeException when executable cannot be found
      */
+    File getJarExecutable() throws JavaHomeException;
+
+    /**
+     * @return the executable
+     * @throws JavaHomeException when executable cannot be found
+     */
     File getExecutable(String name) throws JavaHomeException;
 
     /**
